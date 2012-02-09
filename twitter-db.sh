@@ -38,5 +38,5 @@ find following -not -type d -print0 | xargs -0 cat | sort -n > timeline
 
 # Execution time
 D=$[$(date '+%s') - $S]
-[ -x "$(which duration)" ] && D=$(duration $D) || D="${D}s"
+[ -x "$(command -v duration)" ] && D=$(duration $D) || D="${D}s"
 echo "Total time: $D"
