@@ -21,6 +21,8 @@ SPKI fingerprint (sha1): 10:da:62:4d:ef:41:a3:04:6d:cd:ba:3d:01:8f:19:df:3d:c9:a
 
 $ python http_pins.py byhRQJ1xBQSjURWry5pt0/JXfsk3ye8ZOJJvqC/W/10=
 SPKI fingerprint (sha256): 6f:28:51:40:9d:71:05:04:a3:51:15:ab:cb:9a:6d:d3:f2:57:7e:c9:37:c9:ef:19:38:92:6f:a8:2f:d6:ff:5d
+
+-- StalkR
 """
 
 import binascii

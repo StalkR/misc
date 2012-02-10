@@ -3,6 +3,7 @@
 #   25 3 * * * cd /home/stalkr/twitter-db; flock -nox lock bash -c './db.sh > log 2>&1'
 # Ensure you already performed OAuth authentication before:
 #   twitter-archiver -o -a; twitter-follow -o -a
+# -- StalkR
 
 # Your username + directory to work in
 ME=stalkr_
