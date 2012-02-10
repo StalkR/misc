@@ -1,0 +1,58 @@
+#!/usr/bin/python
+# Python-rc for enhanced python interactive shell experience
+# Add to your .bashrc: [ -f ~/.pythonrc ] && export PYTHONSTARTUP=~/.pythonrc
+# -- StalkR
+
+# Default imports
+import atexit
+from datetime import datetime
+import os.path
+from pprint import pprint
+import random
+import re
+from struct import pack, unpack
+import select
+import socket
+import time
+
+# Intelligent completion with <TAB> 
+try:
+  import readline
+except ImportError:
+  pass
+else:
+  import rlcompleter
+
+  class IrlCompleter(rlcompleter.Completer):
+     """Enable a "tab" insertion if there's no text for completion.
+
+     The default "tab" is two spaces. You can initialize with "\t" as
+     the tab if you wish to use a genuine tab.
+     """
+
+     def __init__(self, tab="  "):
+       self.tab = tab
+       rlcompleter.Completer.__init__(self)
+
+     def complete(self, text, state):
+       if text == "":
+         readline.insert_text(self.tab)
+         return None
+       else:
+         return rlcompleter.Completer.complete(self,text,state)
+
+  # you could change this line to bind another key instead tab.
+  readline.parse_and_bind("tab: complete")
+  readline.set_completer(IrlCompleter().complete)
+
+# Restore command-line history, save it when Python exits.
+history_path = os.path.expanduser("~/.pyhistory")
+if os.path.isfile(history_path):
+   readline.read_history_file(history_path)
+atexit.register(lambda x=history_path: readline.write_history_file(x))
+
+# Custom functions
+def xor(a, b):
+  """XOR two strings together, repeated if not long enough."""
+  return "".join(chr(ord(a[i%len(a)])^ord(b[i%len(b)]))
+                 for i in range(max(len(a),len(b))))
