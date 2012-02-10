@@ -3,8 +3,8 @@
 http://en.wikipedia.org/wiki/Cyclic_redundancy_check
 -- StalkR
 """
-
-from struct import pack,unpack
+import struct
+import sys
 
 # Polynoms in reversed notation
 POLYNOMS = {
@@ -75,17 +75,16 @@ class CRC32(object):
       bkd_crc = ((bkd_crc << 8)&0xffffffff) ^ self.reverse[bkd_crc >> 24] ^ ord(c)
     
     # deduce the 4 bytes we need to insert
-    for c in pack('<L',fwd_crc)[::-1]:
+    for c in struct.pack('<L',fwd_crc)[::-1]:
       bkd_crc = ((bkd_crc << 8)&0xffffffff) ^ self.reverse[bkd_crc >> 24] ^ ord(c)
     
-    res = s[:pos] + pack('<L', bkd_crc) + s[pos:]
+    res = s[:pos] + struct.pack('<L', bkd_crc) + s[pos:]
     assert(crc32(res) == wanted_crc)
     return res
 
 if __name__=='__main__':
-  from sys import argv
-  if len(argv) > 1:
-    arg = argv[1]
+  if len(sys.argv) > 1:
+    arg = sys.argv[1]
   else:
     arg = "test"
   
