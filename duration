@@ -1,0 +1,13 @@
+#!/bin/bash
+# Calculate duration from time in seconds
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <seconds>"
+  echo "Outputs duration: Dd Hh Mm Ss"
+  exit 1
+fi
+T=$1
+D=$[$T/60/60/24]
+H=$[($T-($D*60*60*24))/60/60]
+M=$[($T-($D*60*60*24)-($H*60*60))/60]
+S=$[$T-($D*60*60*24)-($H*60*60)-($M*60)]
+echo "${D}d ${H}h ${M}m ${S}s"
