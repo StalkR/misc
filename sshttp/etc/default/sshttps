@@ -1,0 +1,5 @@
+SSH_PORT=222
+HTTP_PORT=443
+LISTEN_PORT=2244
+USER=sshttps
+CHROOT=/var/run/sshttps

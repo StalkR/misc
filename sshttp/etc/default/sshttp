@@ -1,0 +1,5 @@
+SSH_PORT=222
+HTTP_PORT=80
+LISTEN_PORT=2280
+USER=sshttp
+CHROOT=/var/run/sshttp
