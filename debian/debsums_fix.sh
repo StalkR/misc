@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fix sum for a package file that is reported wrong by debsums
+# Fix sum for a package file that is reported wrong by debsums.
 # Take the sum of the file on the filesystem as a reference and override the
 # sum saved for the package. Most of the time it is because of docs or other
 # non-sensitive files. If it is a binary or script, you better investigate.
