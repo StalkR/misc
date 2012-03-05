@@ -20,7 +20,7 @@ main() {
 }
 
 error() {
-  echo "$@" >&2
+  echo "Error: $@" >&2
   exit 1
 }
 
