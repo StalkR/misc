@@ -50,6 +50,30 @@ def fingerprint(spki, hash):
   """Calculate fingerprint of a SubjectPublicKeyInfo given a hash function."""
   return ":".join(c.encode("hex") for c in hash(spki).digest())
 
+def explain_pin(pin):
+  """Explain a pin by showing its fingerprint with hash algorithm."""
+  try:
+    fp = pin_to_fingerprint(pin)
+  except binascii.Error:
+    print "Error: invalid pin (base64 decode failed)"
+    return False
+
+  # +1 to have even ":", /3 for hex representation with ":"
+  fp_length = (len(fp) + 1) / 3
+  hash_func = None
+  if fp_length == 20:
+    hash_func = "sha1"
+  elif fp_length == 32:
+    hash_func = "sha256"
+
+  if not hash_func:
+    print "Error: unrecognized length (%i is not sha1 or sha256)" % fp_length
+    print "SPKI fingerprint: %s" % fp
+    return False
+
+  print "SPKI fingerprint (%s): %s" % (hash_func, fp)
+  return True
+
 def main(args):
   if len(args) < 2:
     print "Usage: %s <cert|pin> [<cert>...]" % args[0]
@@ -57,31 +81,16 @@ def main(args):
   
   # Probably not a certificate but a pin, show fingerprint
   if not os.path.exists(args[1]):
-    try:
-      fp = pin_to_fingerprint(args[1])
-    except binascii.Error:
-      print "Error: invalid pin (base64 decode failed)"
-      raise SystemExit(1)
-    
-    # +1 to have even ":", /3 to ignore ":" and hex
-    fp_length = (len(fp) + 1) / 3
-    hash_func = None
-    if fp_length == 20:
-      hash_func = "sha1"
-    elif fp_length == 32:
-      hash_func = "sha256"
-    
-    if hash_func:
-      print "SPKI fingerprint (%s): %s" % (hash_func, fp)
-    else:
-      print "Error: invalid length (%i is not sha1 or sha256)" % fp_length
-      print "SPKI fingerprint: %s" % fp
+    if not explain_pin(args[1]):
       raise SystemExit(1)
   
   # Calculate fingerprints and pins of each certificate
   else:
     pins = [ "max-age=600" ]
     for cert in args[1:]:
+      if not os.path.exists(cert):
+        print "%s: does not exist" % cert
+        continue
       print "%s:" % cert
       spki = extract_spki(cert)
       fp_sha1 = fingerprint(spki, hashlib.sha1)
