@@ -4,11 +4,11 @@
 
 Configuration
 
-  To use the program you must first configure a YubiKey in OATH-HOTP mode
-  with a secret shared with the host in ~/.yubiunlock. Do this with:
+  Configure a YubiKey in OATH-HOTP challenge-response with a secret shared with
+  the host:
 
     $ python yubiunlock.py --configure
-    Token configured.
+    Token and machine configured.
 
 
 Usage
@@ -30,20 +30,19 @@ Usage
 Help
 
   $ python yubiunlock.py -h
-  usage: yubiunlock.py [-h] [--debug] [--configure] [--slot SLOT]
-                     [--secret SECRET] [--interval INTERVAL] [--daemon]
-                     [--screensaver SCREENSAVER]
-
+  usage: yubiunlock.py [-h] [--configure] [--slot SLOT] [--secret SECRET]
+                       [--poll POLL] [--daemon] [--screensaver SCREENSAVER]
+  
   YubiKey screen unlocker.
-
+  
   optional arguments:
     -h, --help            show this help message and exit
-    --debug               Enable debug operation (default: False)
     --configure           Configure token (default: False)
     --slot SLOT           Configuration slot to use (default: 1)
     --secret SECRET       Location of shared secret file. (default:
                           ~/.yubiunlock)
-    --interval INTERVAL   Polling interval to check for token (default: 1)
+    --poll POLL           Polling interval in seconds to check for token
+                          (default: 1)
     --daemon              Send program to background (default: False)
     --screensaver SCREENSAVER
                           Name of screensaver process to kill (default: gnome-
@@ -52,8 +51,11 @@ Help
 
 Requirements
 
-  python-argparse, python-daemon, python-psutil, python-usb
-  and python-yubico from https://github.com/Yubico/python-yubico
+  python-argparse
+  python-daemon
+  python-psutil
+  python-usb
+  python-yubico from https://github.com/Yubico/python-yubico
 
   Tested with python2.6 and YubiKey 2.2.3.
 
@@ -72,81 +74,73 @@ import time
 import usb
 import yubico
 
-def hotp(secret, counter, hash=hashlib.sha1):
+DIGEST_SIZE = hashlib.sha1().digest_size
+BLOCK_SIZE = hashlib.sha1().block_size - 1
+
+def hotp(secret, counter, algo=hashlib.sha1):
   """Generic HOTP algorithm, secret/counter are strings."""
-  return hmac.new(secret, counter, hash).digest()
+  return hmac.new(secret, counter, algo).digest()
 
-def randchar():
-  return chr(random.randint(0, 255))
-
-def randstring(size):
-  return ''.join(randchar() for _ in range(size))
+def randbytes(size):
+  """Return a string of random bytes."""
+  return ''.join(chr(random.randint(0, 255)) for _ in range(size))
 
 def date():
   """Date in RFC3339 format."""
-  tz = time.strftime('%z')
-  return time.strftime('%Y-%m-%dT%H:%M:%S') + tz[:3] + ':' + tz[3:]
+  tmz = time.strftime('%z')
+  return time.strftime('%Y-%m-%dT%H:%M:%S') + tmz[:3] + ':' + tmz[3:]
 
-def parse_args():
-  """Parse the command line arguments."""
-  parser = argparse.ArgumentParser(
-      description = 'YubiKey screen unlocker.',
-      add_help = True,
-      formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-  parser.add_argument('--debug', action='store_true', default=False,
-                      help='Enable debug operation')
-  parser.add_argument('--configure', action='store_true', default=False,
-                      help='Configure token')
-  parser.add_argument('--slot', type=int, default=1,
-                      help='Configuration slot to use')
-  parser.add_argument('--secret', type=str, default='~/.yubiunlock',
-                      help='Location of shared secret file.')
-  parser.add_argument('--interval', type=float, default=1,
-                      help='Polling interval to check for token')
-  parser.add_argument('--daemon', action='store_true', default=False,
-                      help='Send program to background')
-  parser.add_argument('--screensaver', type=str, default='gnome-screensaver',
-                      help='Name of screensaver process to kill')
+def log(msg):
+  """Log message with date prepended."""
+  print '%s %s' % (date(), msg)
 
-  args = parser.parse_args()
-  args.secret = os.path.expanduser(args.secret)
-  return args
-
-def configure(args):
-  """Configure token and save secret in file."""
-  secret = randstring(20)
-
+def configure_token(secret, slot=1):
+  """Configures Token in OATH-HOTP challenge-response with secret."""
   try:
-    YK = yubico.find_yubikey()
-    Cfg = YK.init_config()
-    Cfg.mode_challenge_response(secret, type='HMAC', variable=True,
+    token = yubico.find_yubikey()
+    cfg = token.init_config()
+    cfg.mode_challenge_response(secret, type='HMAC', variable=True,
                                 require_button=False)
-    Cfg.extended_flag('SERIAL_API_VISIBLE', True)
-    YK.write_config(Cfg, slot=args.slot)
+    cfg.extended_flag('SERIAL_API_VISIBLE', True)
+    token.write_config(cfg, slot=slot)
+
   except yubico.yubikey.YubiKeyError, error:
     print 'Configuration failed: %s' % str(error)
-    return 1
+    return False
+
   except yubico.yubikey_usb_hid.YubiKeyUSBHIDError, error:
-    print 'Configuration failed: %s' % str(error)
-    return 1
-
-  # success, save secret
-  try:
-    open(args.secret, 'w').write(secret)
-  except IOError, error:
     print 'Unable to create secret file: %s' % str(error)
-    return 1
+    return False
 
-  # try to enforce only user permissions
+  return True
+
+def save_secret(secret, filename):
+  """Save secret to file with user permission only if possible."""
   try:
-    os.chmod(args.secret, 0600)
+    open(filename, 'w').write(secret)
+  except IOError:
+    return False
+
+  try:
+    os.chmod(filename, 0600)
   except OSError:
     pass
 
-  print 'Token configured.'
+  return True
+
+def configure(args):
+  """Configure token and save secret in file."""
+  secret = randbytes(DIGEST_SIZE)
+  if not configure_token(secret, args.slot):
+    return 1
+
+  if not save_secret(secret, args.secret):
+    return 1
+
+  print 'Token and machine configured.'
   return 0
 
-def tokens():
+def find_tokens():
   """Iterate over all available tokens."""
   for skip in range(256):
     try:
@@ -156,21 +150,21 @@ def tokens():
     except usb.USBError:
       pass
 
-def authentify(YK, secret, slot):
-  """Authentify token with challenge-response."""
-  challenge = randstring(63)
-  expected = hotp(secret, challenge)
-
+def challenge_response(token, challenge, slot=1):
+  """Send challenge to token and receive response."""
   try:
-    response = YK.challenge_response(challenge, slot=slot)
-    if response == expected:
-      return True
+    return token.challenge_response(challenge, slot=slot)
   except yubico.yubikey.YubiKeyError:
     pass
   except usb.USBError:
     pass
+  return ''
 
-  return False
+def authentify(token, secret, slot=1):
+  """Authentify token with challenge-response."""
+  challenge = randbytes(BLOCK_SIZE)
+  expected = hotp(secret, challenge)
+  return challenge_response(token, challenge, slot) == expected
 
 def screensaver(name):
   """Return screensaver process if found or None."""
@@ -181,28 +175,55 @@ def screensaver(name):
 
 def loop(args, secret):
   """Unlock screen when locked and token present."""
-  p = None
+  proc = None
   while True:
     # wait for screensaver
-    while not p:
-      p = screensaver(args.screensaver)
-      if p:
+    while not proc:
+      proc = screensaver(args.screensaver)
+      if proc:
         break
-      time.sleep(args.interval)
+      time.sleep(args.poll)
+
     # wait for token
     while True:
       # we lost screensaver, go back find it
-      if not p.is_running():
-        p = None
+      if not proc.is_running():
+        proc = None
         break
+
       # try to authenticate all available tokens
-      for YK in tokens():
-        if authentify(YK, secret, args.slot):
-          print '%s Unlocked screen.' % date()
-          p.kill()
-      time.sleep(args.interval)
+      for token in find_tokens():
+        if authentify(token, secret, args.slot):
+          log('Unlocked screen.')
+          proc.kill()
+
+      time.sleep(args.poll)
+
+def parse_args():
+  """Parse the command line arguments."""
+  parser = argparse.ArgumentParser(
+      description = 'YubiKey screen unlocker.',
+      add_help = True,
+      formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--configure', action='store_true', default=False,
+                      help='Configure token')
+  parser.add_argument('--slot', type=int, default=1,
+                      help='Configuration slot to use')
+  parser.add_argument('--secret', type=str, default='~/.yubiunlock',
+                      help='Location of shared secret file.')
+  parser.add_argument('--poll', type=float, default=1,
+                      help='Polling interval in seconds to check for token')
+  parser.add_argument('--daemon', action='store_true', default=False,
+                      help='Send program to background')
+  parser.add_argument('--screensaver', type=str, default='gnome-screensaver',
+                      help='Name of screensaver process to kill')
+
+  args = parser.parse_args()
+  args.secret = os.path.expanduser(args.secret)
+  return args
 
 def main():
+  """Entry point."""
   args = parse_args()
 
   if args.configure:
