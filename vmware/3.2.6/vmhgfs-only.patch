@@ -1,0 +1,49 @@
+diff --git a/filesystem.c b/filesystem.c
+index 0109833..ec97589 100644
+--- a/filesystem.c
++++ b/filesystem.c
+@@ -358,6 +358,8 @@ HgfsReadSuper(struct super_block *sb, // OUT: Superblock object
+    HgfsSuperInfo *si;
+    HgfsMountInfo *mountInfo;
+    struct dentry *rootDentry;
++   struct dentry *tmpDentry;
++   struct inode *inode;
+
+    ASSERT(sb);
+
+@@ -408,7 +410,9 @@ HgfsReadSuper(struct super_block *sb, // OUT: Superblock object
+     * and superblock. Then HgfsInstantiate will do the rest, issuing a getattr,
+     * getting the inode, and instantiating the dentry with it.
+     */
+-   rootDentry = compat_d_alloc_name(NULL, "/");
++   inode = new_inode(sb);
++   tmpDentry = d_alloc_root(inode);
++   rootDentry = compat_d_alloc_name(tmpDentry, "/");
+    if (rootDentry == NULL) {
+       LOG(4, (KERN_WARNING "VMware hgfs: HgfsReadSuper: Could not allocate "
+               "root dentry\n"));
+diff --git a/fsutil.c b/fsutil.c
+index 0c5102b..10808df 100644
+--- a/fsutil.c
++++ b/fsutil.c
+@@ -607,7 +607,7 @@ HgfsChangeFileAttributes(struct inode *inode,          // IN/OUT: Inode
+     * account for '.' and ".."), and find printed a hard link error. So until
+     * we have getattr support for nlink, everyone gets 1.
+     */
+-   inode->i_nlink = 1;
++   set_nlink(inode, 1);
+
+    /*
+     * Use the stored uid and gid if we were given them at mount-time, or if
+diff --git a/tcp.c b/tcp.c
+index c7070a6..55f318d 100644
+--- a/tcp.c
++++ b/tcp.c
+@@ -34,6 +34,7 @@
+ #include <linux/inet.h>
+ #include <linux/errno.h>
+ #include <linux/kthread.h>
++#include <linux/moduleparam.h>
+
+ #include "compat_kernel.h"
+ #include "compat_mutex.h"

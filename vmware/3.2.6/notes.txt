@@ -1,0 +1,35 @@
+1) install headers
+(error Makefile_cpu.x86 not found.. you need to build kernel to have the proper header files)
+cd /usr/src
+aptitude install linux-source
+tar jxf linux-source-3.2.6.tar.bz2
+cp /boot/config-3.2.6 .config
+CONCURRENCY_LEVEL=2 make-kpkg --revision $(date '+%Y%m%d') build
+ln -s linux-source-3.2.6 /usr/src/linux
+
+2) fix bugs
+tar files in /usr/lib/vmware-tools/modules/source/
+vmhgfs: patched, works.
+vmxnet: fail
+others: ok
+
+3) configure vmware tools/build modules
+vmware-config-tools.pl
+[...]
+give path to kernel headers: /usr/src/linux/include
+[...]
+all good!
+
+= Notes
+* header detection: impossible
+  headers should be in: /usr/src/linux/include
+  unable to make vmware understand this path:
+  /usr/lib/vmware-tools/sbin/vmware-modconfig-console --get-kernel-headers
+  [empty]
+  but validate works...
+  /usr/lib/vmware-tools/sbin/vmware-modconfig-console --validate-kernel-headers /usr/src/linux/include
+
+* make a module manually for debugging
+  cd /tmp
+  tar xf /usr/lib/vmware-tools/modules/source/vmhgfs.tar
+  make -j -C /tmp/vmhgfs-only auto-build SUPPORT_SMP=1 HEADER_DIR=/usr/src/linux-source-3.2.6/include CC=/usr/bin/gcc GREP=/usr/bin/make IS_GCC_3=no VMCCVER=4.4.3
