@@ -1,0 +1,24 @@
+diff -ur vmhgfs-only.orig/inode.c vmhgfs-only/inode.c
+--- vmhgfs-only.orig/inode.c	2010-11-11 19:03:47.000000000 +0100
++++ vmhgfs-only/inode.c	2011-03-27 23:21:58.000000000 +0200
+@@ -1864,7 +1864,7 @@
+       /* Find a dentry with valid d_count. Refer bug 587789. */
+       list_for_each(pos, &inode->i_dentry) {
+          dentry = list_entry(pos, struct dentry, d_alias);
+-         dcount = atomic_read(&dentry->d_count);
++         dcount = atomic_read((const atomic_t *)&dentry->d_count);
+          if (dcount) {
+             LOG(4, ("Found %s %d \n", (dentry)->d_name.name, dcount));
+             break;
+diff -ur vmhgfs-only.orig/super.c vmhgfs-only/super.c
+--- vmhgfs-only.orig/super.c	2010-11-11 19:03:47.000000000 +0100
++++ vmhgfs-only/super.c	2011-03-27 23:22:42.000000000 +0200
+@@ -70,7 +70,7 @@
+ #ifndef VMW_USE_IGET_LOCKED
+    .read_inode    = HgfsReadInode,
+ #endif
+-   .clear_inode   = HgfsClearInode,
++//   .clear_inode   = HgfsClearInode,
+    .put_super     = HgfsPutSuper,
+    .statfs        = HgfsStatfs,
+ };

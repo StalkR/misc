@@ -1,0 +1,26 @@
+diff -ur vmci-only.orig/vmci_drv.c vmci-only/vmci_drv.c
+--- vmci-only.orig/vmci_drv.c	2010-11-11 19:03:47.000000000 +0100
++++ vmci-only/vmci_drv.c	2011-03-27 23:28:12.000000000 +0200
+@@ -54,6 +54,13 @@
+ #include "vmci_version.h"
+ #include "vmciCommonInt.h"
+ 
++#ifndef init_MUTEX(sem)
++#define init_MUTEX(sem)         sema_init(sem, 1)
++#endif
++#ifndef init_MUTEX_LOCKED(sem)
++#define init_MUTEX_LOCKED(sem)  sema_init(sem, 0)
++#endif
++
+ #define LGPFX "VMCI: "
+ #define VMCI_DEVICE_MINOR_NUM 0
+ 
+@@ -93,7 +100,7 @@
+    .owner   = THIS_MODULE,
+    .open    = vmci_open,
+    .release = vmci_close,
+-   .ioctl   = vmci_ioctl,
++//   .ioctl   = vmci_ioctl,
+    .poll    = vmci_poll,
+ };
+ 

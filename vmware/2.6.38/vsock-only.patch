@@ -1,0 +1,12 @@
+diff -ur vsock-only.orig/linux/af_vsock.c vsock-only/linux/af_vsock.c
+--- vsock-only.orig/linux/af_vsock.c	2010-11-11 19:04:49.000000000 +0100
++++ vsock-only/linux/af_vsock.c	2011-03-27 23:33:42.000000000 +0200
+@@ -400,7 +400,7 @@
+    VSockPacket pkt;
+ } VSockRecvPktInfo;
+ 
+-static DECLARE_MUTEX(registrationMutex);
++static DEFINE_SEMAPHORE(registrationMutex);
+ static int devOpenCount = 0;
+ static int vsockVmciSocketCount = 0;
+ static int vsockVmciKernClientCount = 0;
