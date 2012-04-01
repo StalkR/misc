@@ -1,0 +1,14 @@
+#!/bin/bash
+# /etc/ppp/ip-down.d/vpnod
+[ "${PPP_IPPARAM}" = "vpnod" ] || exit 0
+USER=vpn
+MARK=0x4
+TABLE=10000
+ 
+ip rule del fwmark $MARK lookup $TABLE
+ip route del default via $PPP_REMOTE src $PPP_LOCAL table $TABLE
+ 
+echo 1 > /proc/sys/net/ipv4/conf/$PPP_IFACE/rp_filter
+echo 1 > /proc/sys/net/ipv4/conf/all/rp_filter
+ 
+ip route flush cache
