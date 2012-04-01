@@ -51,6 +51,12 @@ do_start()
 	start-stop-daemon --start --quiet --exec $DAEMON -- \
 		$DAEMON_ARGS \
 		|| return 2
+	if ! ip rule show | grep -q "lookup $TABLE"; then
+		ip rule add fwmark $MARK lookup $TABLE
+	fi
+	if ! ip route show table $TABLE | grep -q "default"; then
+		ip route add local 0.0.0.0/0 dev lo table $TABLE
+	fi
 }
 
 #
@@ -58,6 +64,12 @@ do_start()
 #
 do_stop()
 {
+	if ip rule show | grep -q "lookup $TABLE"; then
+		ip rule del fwmark $MARK lookup $TABLE
+	fi
+	if ip route show table $TABLE | grep -q "default"; then
+		ip route del local 0.0.0.0/0 dev lo table $TABLE
+	fi
 	# Return
 	#   0 if daemon has been stopped
 	#   1 if daemon was already stopped
