@@ -69,7 +69,7 @@ def hotp(key, counter, digits=6):
   offset = ord(hashed[-1]) & 0xF
   truncatedHash = struct.unpack('>L', hashed[offset:][:4])[0] & 0x7FFFFFFF
   pinValue = truncatedHash % 10**digits
-  return '%06i' % pinValue
+  return ('%%0%ii' % digits) % pinValue
 
 def parse_args():
   """Parse the command line arguments."""
