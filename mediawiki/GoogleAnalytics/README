@@ -1,0 +1,10 @@
+* Install extension
+cd /usr/share/mediawiki-extensions
+mkdir GoogleAnalytics
+cd GoogleAnalytics
+wget 'https://raw.github.com/StalkR/misc/master/mediawiki/GoogleAnalytics/GoogleAnalytics.php'
+ln -s /usr/share/mediawiki-extensions/GoogleAnalytics /var/lib/mediawiki/extensions
+
+* Append to /etc/mediawiki/LocalSettings.php
+require_once("$IP/extensions/GoogleAnalytics/GoogleAnalytics.php");
+$wgGoogleAnalyticsAccount = "UA-xxxxxx-xx";
