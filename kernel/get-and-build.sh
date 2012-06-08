@@ -4,6 +4,8 @@
 #  * since 3.x, files are in /v3.0/ (even if x > 0)
 #  * since 3.0.5, only the .tar is signed (and no longer compressed archives)
 #  * save your kernel configs in the same directory
+# For the script to work, be sure you already have successfully done the process
+# manually once (added pgp keys, installed gcc plugins, etc).
 
 fail() {
   echo "Error: $@" >&2
