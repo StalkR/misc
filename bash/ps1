@@ -101,9 +101,7 @@ _ps1() {
   P="$P $RETCODE$LOAD$DATE"
 
   # Show git branch + status
-  if command -v __git_ps1 >/dev/null; then
-    P="$P\$(_ps1_git)"
-  fi
+  P="$P\$(_ps1_git)"
 
   P="$P\[$NONE\]\n\\$ "
 
