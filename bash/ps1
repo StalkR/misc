@@ -2,7 +2,7 @@
 
 # Return the mount name and type of given directory (or current).
 mount_type() {
-  local DIR=${1:-$PWD}
+  local DIR=${1:-$(pwd -P)}
   pushd / >/dev/null
   python -c '
 import os
