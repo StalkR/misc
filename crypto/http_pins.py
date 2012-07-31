@@ -36,7 +36,7 @@ def extract_spki(cert):
   """Obtain SubjectPublicKeyInfo from public certificate using OpenSSL."""
   args = ["openssl", "x509", "-pubkey", "-noout", "-in", cert]
   proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-  out = proc.communicate()[0].split("\n")
+  out = proc.communicate()[0].strip().split("\n")
   # remove 1st (BEGIN PUBLIC KEY) and last line (END PUBLIC KEY)
   return "".join(map(string.strip, out[1:-1])).decode("base64")
 
@@ -97,7 +97,7 @@ def main(args):
       fp_sha256 = fingerprint(spki, hashlib.sha256)
       print "* SPKI fingerprint (sha1): %s" % fp_sha1
       print "* SPKI fingerprint (sha256): %s" % fp_sha256
-      pins.append("pin-sha1=%s" % fingerprint_to_pin(fp_sha1))
+      #pins.append("pin-sha1=%s" % fingerprint_to_pin(fp_sha1))
       pins.append("pin-sha256=%s" % fingerprint_to_pin(fp_sha256))
     print "Public-Key-Pins: %s" % "; ".join(pins)
 
