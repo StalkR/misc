@@ -13,21 +13,22 @@ and comparisons:
 2) easy triage with stat operation:
     - files with same path, same dev+inode are duplicates
     - files with different sizes are not duplicates
-3) find duplicates by working on a list of disjoint set of files, comparing N
-   potential duplicates at the same time
+3) find duplicates by working on a list of disjoint set of files, reading
+   by blocks, hashing, comparing all hashes then blocks if necessary
 """
 
+import hashlib
 import itertools
 import os
 import sys
 
 
 class ProgressClock(object):
-  """A simple progress class showing a turning bar /-\|."""
+  """Simple progress class showing a turning bar /-\|."""
 
   def __init__(self, message, fp=sys.stderr):
     self.fp = fp
-    self.fp.write(message + '  ')
+    self.fp.write(message + ' |')
     self.counter = 0
 
   def Tick(self):
@@ -45,22 +46,29 @@ class ProgressClock(object):
     self.fp.write('\b \n')
 
 
-class ProgressMessage(object):
-  """A simple progress class showing a message on a line."""
+class ProgressPercent(object):
+  """Percent progress avancement class."""
 
-  def __init__(self, message, fp=sys.stderr):
+  def __init__(self, message, total, fp=sys.stderr):
     self.fp = fp
-    self.fp.write(message + '\n')
+    self.fp.write(message + ' %3i%%' % 0)
+    self.i = 0
+    self.total = total
+    self.previous = 0
 
-  def Tick(self, message):
-    self.fp.write('\r%s' % message)
+  def Tick(self):
+    percent = 100*self.i/self.total
+    if percent != self.previous:
+      self.fp.write('\b\b\b\b%3i%%' % percent)
+      self.previous = percent
+    self.i += 1
 
   def End(self):
-    self.fp.write('\r' + ' '*80 + '\r')
+    self.fp.write('\b\b\b\b    \n')
 
 
 class File(object):
-  """This object represents a file and provides SameAs for comparison."""
+  """File representation with helper for stat and comparison."""
 
   def __init__(self, path):
     self.path = path
@@ -86,15 +94,34 @@ class File(object):
   def PotentialDuplicate(self, file2):
     return self.size == file2.size
 
+  def __eq__(self, other):
+    return self.path == other.path
+
+  def __ne__(self, other):
+    return self.path != other.path
+
+  def __lt__(self, other):
+    return self.path < other.path
+
+  def __le__(self, other):
+    return self.path <= other.path
+
+  def __gt__(self, other):
+    return self.path > other.path
+
+  def __ge__(self, other):
+    return self.path >= other.path
+
 
 def ListFiles(path):
+  """Return list of files in a path, ignoring symlinks."""
   files = []  # List of File.
   p = ProgressClock('[*] Listing files')
   for dirpath, _, filenames in os.walk(path):
-    p.Tick()
     for filename in filenames:
+      p.Tick()
       path = os.path.join(dirpath, filename)
-      if os.path.isfile(path):
+      if os.path.isfile(path) and not os.path.islink(path):
         files.append(File(path))
   p.End()
   return files
@@ -138,27 +165,20 @@ class DupeList(object):
 
 def FindDups(files, block=4096):
   """Find duplicate files in a list of File elements, two passes."""
-  dups = DupeList()
   work = DupeList()
-
-  p = ProgressMessage('[*] First pass, triage obvious dups and not dups')
   # Binomial coefficient C(len(files), 2)
   total = len(files) * (len(files) - 1) / 2
-  i = 0
+  p = ProgressPercent('[+] Triage obvious dups/non-dups', total)
   for file1, file2 in itertools.combinations(files, 2):
-    p.Tick('%3i%% [%i/%i]' % (100*i/total, i, total))
-    if file1.ObviousDuplicate(file2):
-      dups.AddDup(file1, file2)
-    elif file1.PotentialDuplicate(file2):
+    p.Tick()
+    if not file1.ObviousDuplicate(file2) and file1.PotentialDuplicate(file2):
       work.AddDup(file1, file2)
-    i += 1
   p.End()
 
-  p = ProgressMessage('[*] Second pass, find duplicates in same-size files')
-  total = len(work)
-  i = 0
+  dups = DupeList()
+  p = ProgressPercent('[+] Find duplicates in same-size files', len(work))
   for fileset in work:
-    p.Tick('%3i%% [%i/%i] %i dups' % (100*i/total, i, total, len(dups)))
+    p.Tick()
     for f in fileset:
       f.fp = open(f.path, 'rb')
     dups.Merge(FindDupsRecurse(DupeList([fileset]), 0, block))
@@ -178,30 +198,38 @@ def FindDupsRecurse(duplist, offset=0, block=4096):
   sublist = DupeList()
   for dupset in duplist:
     for f in dupset:
-      f.block = f.fp.read(block) if offset < f.size else True
+      if offset < f.size:
+        f.block = f.fp.read(block)
+        f.hash = hashlib.sha1(f.block).digest()
+      else:
+        f.block = f.hash = True
   for dupset in duplist:
     for file1, file2 in itertools.combinations(dupset, 2):
-      if file1.block == file2.block:
+      if file1.hash == file2.hash and file1.block == file2.block:
         sublist.AddDup(file1, file2)
   return FindDupsRecurse(sublist, offset+block, block)
 
 
-def ReportDups(duplist, min_size=4096):
+def ReportDups(duplist, min_size=0):
   for dupset in duplist:
     if list(dupset)[0].size > min_size:
       print 'Duplicates:'
-      for f in dupset:
+      for f in sorted(dupset):
         print '  %i: %r' % (f.size, f.path)
 
 
 def main():
   if len(sys.argv) < 2:
-    print 'Usage: %s <path>' % sys.argv[0]
+    print 'Usage: %s <path> [min size]' % sys.argv[0]
     raise SystemExit
 
-  files = ListFiles(sys.argv[1])
+  path = sys.argv[1]
+  min_size = sys.argv[2] if len(sys.argv) > 2 else 0
+
+  files = ListFiles(path)
   dups = FindDups(files)
-  ReportDups(dups)
+  ReportDups(dups, min_size)
+
 
 if '__main__' == __name__:
   main()
