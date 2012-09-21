@@ -163,7 +163,7 @@ class DupeList(object):
         return True
 
 
-def FindDups(files, block=4096):
+def FindDups(files, min_size=0, block_size=4096):
   """Find duplicate files in a list of File elements, two passes."""
   work = DupeList()
   # Binomial coefficient C(len(files), 2)
@@ -171,6 +171,8 @@ def FindDups(files, block=4096):
   p = ProgressPercent('[+] Triage obvious dups/non-dups', total)
   for file1, file2 in itertools.combinations(files, 2):
     p.Tick()
+    if file1.size < min_size or file2.size < min_size:
+      continue
     if not file1.ObviousDuplicate(file2) and file1.PotentialDuplicate(file2):
       work.AddDup(file1, file2)
   p.End()
@@ -181,7 +183,8 @@ def FindDups(files, block=4096):
     p.Tick()
     for f in fileset:
       f.fp = open(f.path, 'rb')
-    dups.Merge(FindDupsRecurse(DupeList([fileset]), 0, block))
+    file_size = list(fileset)[0].size
+    dups.Merge(SameSizeDups(DupeList([fileset]), file_size, block_size))
     for f in fileset:
       f.fp.close()
   p.End()
@@ -189,25 +192,23 @@ def FindDups(files, block=4096):
   return dups
 
 
-def FindDupsRecurse(duplist, offset=0, block=4096):
-  """Takes a duplist of File elements and returns a sub duplist of these."""
-  if not len(duplist):
-    return []
-  if all([offset >= f.size for dupset in duplist for f in dupset]):
-    return duplist
-  sublist = DupeList()
-  for dupset in duplist:
-    for f in dupset:
-      if offset < f.size:
-        f.block = f.fp.read(block)
-        f.hash = hashlib.sha1(f.block).digest()
-      else:
-        f.block = f.hash = True
-  for dupset in duplist:
-    for file1, file2 in itertools.combinations(dupset, 2):
-      if file1.hash == file2.hash and file1.block == file2.block:
-        sublist.AddDup(file1, file2)
-  return FindDupsRecurse(sublist, offset+block, block)
+def SameSizeDups(duplist, file_size, block_size=4096):
+  """Takes a duplist of same size File and returns duplist of duplicates."""
+  offset = 0
+  while len(duplist) and offset < file_size:
+    tmplist = DupeList()
+    for dupset in duplist:
+      for f in dupset:
+        block = f.fp.read(block_size)
+        f.md5 = hashlib.md5(block).digest()
+        f.sha1 = hashlib.sha1(block).digest()
+    offset += block_size
+    for dupset in duplist:
+      for file1, file2 in itertools.combinations(dupset, 2):
+        if file1.md5 == file2.md5 and file1.sha1 == file2.sha1:
+          tmplist.AddDup(file1, file2)
+    duplist = tmplist
+  return duplist
 
 
 def ReportDups(duplist, min_size=0):
@@ -227,7 +228,7 @@ def main():
   min_size = sys.argv[2] if len(sys.argv) > 2 else 0
 
   files = ListFiles(path)
-  dups = FindDups(files)
+  dups = FindDups(files, min_size)
   ReportDups(dups, min_size)
 
 
