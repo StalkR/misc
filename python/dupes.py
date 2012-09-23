@@ -7,14 +7,19 @@ Other programs doing this:
 2) fdup: https://github.com/pozdnychev/fdup/
    under optimized, compare files 2 by 2 (read same file multiple times)
 
-The algorithm I implemented tries to be efficient in term of disk reads
-and comparisons:
+The algorithm here tries to be efficient in disk reads and comparisons:
 1) list files (ignore symlink)
 2) easy triage with stat operation:
     - files with same path, same dev+inode are duplicates
     - files with different sizes are not duplicates
 3) find duplicates by working on a list of disjoint set of files, reading
    by blocks, hashing, comparing all hashes then blocks if necessary
+
+Usage:
+  $ python dupes.py <path> [min size]
+  prints progress and a nice report
+  $ python dupes.py <path> [min size] 2>/dev/null
+  only prints duplicate files, one per line
 """
 
 import hashlib
@@ -199,24 +204,28 @@ def SameSizeDups(duplist, file_size, block_size=4096):
     tmplist = DupeList()
     for dupset in duplist:
       for f in dupset:
-        block = f.fp.read(block_size)
-        f.md5 = hashlib.md5(block).digest()
-        f.sha1 = hashlib.sha1(block).digest()
-    offset += block_size
+        # Hash and forget about block: faster and less memory
+        f.hash = hashlib.md5(f.fp.read(block_size)).digest()
     for dupset in duplist:
       for file1, file2 in itertools.combinations(dupset, 2):
-        if file1.md5 == file2.md5 and file1.sha1 == file2.sha1:
-          tmplist.AddDup(file1, file2)
+        if file1.hash == file2.hash:
+          # Re-read this block and compare byte by byte.
+          file1.fp.seek(offset)
+          file2.fp.seek(offset)
+          if file1.fp.read(block_size) == file2.fp.read(block_size):
+            tmplist.AddDup(file1, file2)
+    offset += block_size
     duplist = tmplist
   return duplist
 
 
-def ReportDups(duplist, min_size=0):
+def ReportDups(duplist):
   for dupset in duplist:
-    if list(dupset)[0].size > min_size:
-      print 'Duplicates:'
-      for f in sorted(dupset):
-        print '  %i: %r' % (f.size, f.path)
+    print
+    sys.stderr.write('Duplicates (%i bytes):\n' % list(dupset)[0].size)
+    for f in sorted(dupset):
+      sys.stderr.write('  ')
+      print f.path
 
 
 def main():
@@ -229,7 +238,7 @@ def main():
 
   files = ListFiles(path)
   dups = FindDups(files, min_size)
-  ReportDups(dups, min_size)
+  ReportDups(dups)
 
 
 if '__main__' == __name__:
