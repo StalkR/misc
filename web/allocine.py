@@ -22,21 +22,21 @@ class Movie(object):
     page: String with AlloCine html page of this movie.
     title: String with movie title.
     original_title: String with original movie title if foreign movie.
-    year: String with movie year (release or production).
-    release_year: String with release year.
+    year: String with movie year (production or release).
     production_year: String with production year.
+    release_year: String with release year.
     duration: String with duration (e.g. 1h30m).
-    director: String with director's name.
+    directors: List of strings with directors names.
     actors: List of strings with actors names.
     genres: List of strings with genre names.
-    nationality: String with movie nationality.
+    nationalities: List of strings with movie nationalities.
     rating: String with rating (spectators or press, between 0 and 5).
     rating_spectators: String with spectators rating.
     rating_press: String with press rating.
   """
 
   def __init__(self, allocine_id, cache_dir='.'):
-    """Create a new Movie object.
+    """Create a new AlloCine Movie object.
 
     Args:
       allocine_id: Integer with AlloCine movie ID.
@@ -78,14 +78,9 @@ class Movie(object):
 
   @property
   def year(self):
-    if self.year_release:
-      return self.year_release
-    return self.year_production
-
-  @property
-  def year_release(self):
-    m = re.search('itemprop="datePublished" content="([^-"]+)', self.page)
-    return m.group(1) if m else ''
+    if self.year_production:
+      return self.year_production
+    return self.year_release
 
   @property
   def year_production(self):
@@ -93,14 +88,19 @@ class Movie(object):
     return m.group(1) if m else ''
 
   @property
-  def duration(self):
-    m = re.search('itemprop="duration" content="(PT)?([^"]+)"', self.page)
-    return m.group(2).lower() if m else ''
+  def year_release(self):
+    m = re.search('itemprop="datePublished" content="([^-"]+)', self.page)
+    return m.group(1) if m else ''
 
   @property
-  def director(self):
-    m = re.search('itemprop="director" .*? itemprop="name">([^<]+)', self.page)
-    return m.group(1) if m else ''
+  def duration(self):
+    m = re.search('itemprop="duration" content="(?:PT)?([0-9HM]+)"', self.page)
+    return m.group(1).lower() if m else ''
+
+  @property
+  def directors(self):
+    regexp = 'itemprop="director" .*? itemprop="name">([^<]+)'
+    return re.findall(regexp, self.page)
 
   @property
   def actors(self):
@@ -112,11 +112,11 @@ class Movie(object):
     return re.findall('itemprop="genre">([^<]+)', self.page)
 
   @property
-  def nationality(self):
+  def nationalities(self):
     p = self.page.find('Nationalit')
     q = self.page.find('</div>', p)
-    m = re.search('<span[^>]*>([^<]+)', self.page[p:q].replace('\n', ''))
-    return m.group(1) if m else ''
+    zone = self.page[p:q].replace('\n', '')
+    return [n.capitalize() for n in re.findall('<span[^>]*>([^<]+)', zone)]
 
   @property
   def rating(self):
