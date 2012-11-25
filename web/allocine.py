@@ -1,9 +1,23 @@
 #!/usr/bin/python
 # AlloCine web API.
 
+import htmlentitydefs
 import os
 import re
 import urllib
+
+# Module global: directory to cache result pages, empty to disable.
+CACHE_DIR = ''
+
+
+def Decode(s):
+  def DecodeEntities(m):
+    return unichr(ord(htmlentitydefs.entitydefs.get(m.group(1), m.group(0))))
+
+  s = re.sub('&#([0-9a-fA-F]+);', lambda m: unichr(int(m.group(1))), s)
+  s = re.sub('&#x([0-9a-fA-F]+);', lambda m: unichr(int(m.group(1), 16)), s)
+  s = re.sub('&(\w+?);', DecodeEntities, s)
+  return s
 
 
 class UrlOpener(urllib.FancyURLopener):
@@ -16,47 +30,44 @@ class Movie(object):
 
   Attributes:
     id: Integer with AlloCine movie ID.
-    cache_dir: String with a cache directory, empty to disable.
 
   Properties, empty when not available:
     page: String with AlloCine html page of this movie.
-    title: String with movie title.
-    original_title: String with original movie title if foreign movie.
-    year: String with movie year (production or release).
-    production_year: String with production year.
-    release_year: String with release year.
+    name: String with movie name.
+    original_name: String with original movie name if foreign movie.
+    year: Integer with movie year (production or release).
+    production_year: Integer with production year.
+    release_year: Integer with release year.
     duration: String with duration (e.g. 1h30m).
     directors: List of strings with directors names.
     actors: List of strings with actors names.
     genres: List of strings with genre names.
     nationalities: List of strings with movie nationalities.
-    rating: String with rating (spectators or press, between 0 and 5).
-    rating_spectators: String with spectators rating.
-    rating_press: String with press rating.
+    rating: Float with rating (spectators or press, between 0 and 5).
+    rating_spectators: Float with spectators rating.
+    rating_press: Float with press rating.
   """
 
-  def __init__(self, allocine_id, cache_dir='.'):
+  def __init__(self, allocine_id):
     """Create a new AlloCine Movie object.
 
     Args:
       allocine_id: Integer with AlloCine movie ID.
-      cache_dir: String with a cache directory, empty to disable.
     """
-    self.id = allocine_id
-    self.cache_dir = cache_dir
+    self.id = int(allocine_id)  # Work if a string number is supplied.
     self._page = ''
 
   def __repr__(self):
     return '<AlloCine %i>' % self.id
 
   def _LoadPage(self):
-    cache = os.path.join(self.cache_dir, '%i.html' % self.id)
-    if self.cache_dir and os.path.exists(cache):
+    cache = os.path.join(CACHE_DIR, '%i.html' % self.id)
+    if CACHE_DIR and os.path.exists(cache):
       page = open(cache).read()
     else:
       url = 'http://www.allocine.fr/film/fichefilm_gen_cfilm=%i.html' % self.id
       page = UrlOpener().open(url).read()
-      if self.cache_dir:
+      if CACHE_DIR:
         open(cache, 'w').write(page)
     return page.decode('utf-8')
 
@@ -67,14 +78,14 @@ class Movie(object):
     return self._page
 
   @property
-  def title(self):
+  def name(self):
     m = re.search('property="og:title" content="([^"]+)"', self.page)
-    return m.group(1) if m else ''
+    return Decode(m.group(1)) if m else ''
 
   @property
-  def original_title(self):
+  def original_name(self):
     m = re.search('Titre original</div></th><td>([^<]+)</td>', self.page)
-    return m.group(1) if m else self.title
+    return Decode(m.group(1)) if m else self.name
 
   @property
   def year(self):
@@ -85,12 +96,12 @@ class Movie(object):
   @property
   def year_production(self):
     m = re.search(' de production</div></th><td><span[^>]*>([^<]+)', self.page)
-    return m.group(1) if m else ''
+    return int(m.group(1)) if m else None
 
   @property
   def year_release(self):
     m = re.search('itemprop="datePublished" content="([^-"]+)', self.page)
-    return m.group(1) if m else ''
+    return int(m.group(1)) if m else None
 
   @property
   def duration(self):
@@ -100,23 +111,28 @@ class Movie(object):
   @property
   def directors(self):
     regexp = 'itemprop="director" .*? itemprop="name">([^<]+)'
-    return re.findall(regexp, self.page)
+    return [Decode(name) for name in re.findall(regexp, self.page)]
 
   @property
   def actors(self):
-    m = re.search('itemprop="actors" (.*)', self.page)  # This stops at \n.
-    return re.findall('itemprop="name">([^<]+)', m.group(1)) if m else []
+    m = re.search('itemprop="actors" (.*)', self.page)
+    if not m:
+      return []
+    matches = re.findall('itemprop="name">([^<]+)', m.group(1))
+    return [Decode(name) for name in matches]
 
   @property
   def genres(self):
-    return re.findall('itemprop="genre">([^<]+)', self.page)
+    matches = re.findall('itemprop="genre">([^<]+)', self.page)
+    return [Decode(name) for name in matches]
 
   @property
   def nationalities(self):
-    p = self.page.find('Nationalit')
-    q = self.page.find('</div>', p)
-    zone = self.page[p:q].replace('\n', '')
-    return [n.capitalize() for n in re.findall('<span[^>]*>([^<]+)', zone)]
+    m = re.search('Nationalit(.*?)</div>', self.page, re.S)
+    if not m:
+      return []
+    matches = re.findall('<span[^>]*>([^<]+)', m.group(1))
+    return [Decode(n.strip()).capitalize() for n in matches]
 
   @property
   def rating(self):
@@ -129,11 +145,11 @@ class Movie(object):
     p = self.page.find('Spectateurs\n</span>')
     q = self.page.find('</div>', p)
     m = re.search('<span[^>]*>([0-9,]+)<', self.page[p:q])
-    return m.group(1).replace(',', '.') if m else ''
+    return float(m.group(1).replace(',', '.')) if m else None
 
   @property
   def rating_press(self):
     p = self.page.find('Presse\n</span>')
     q = self.page.find('</div>', p)
     m = re.search('<span[^>]*>([0-9,]+)<', self.page[p:q])
-    return m.group(1).replace(',', '.') if m else ''
+    return float(m.group(1).replace(',', '.')) if m else None
