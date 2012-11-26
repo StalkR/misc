@@ -69,10 +69,13 @@ class TestTitle(unittest.TestCase):
     self.assertEqual(u'Corps \xe0 coeur', tt.name)
     self.assertEqual([], tt.aka)
 
-  def testYearWithJunk(self):
+  def testYearWithHtmlOrSerie(self):
     tt = imdb.Title('tt1965639')
     self.assertEqual('El clima y las cuatro estaciones', tt.name)
     self.assertEqual(1994, tt.year)
+    tt = imdb.Title('tt0086677')
+    self.assertEqual('Brothers', tt.name)
+    self.assertEqual(1984, tt.year)  # TV Series 1984-1989
 
 
 class TestName(unittest.TestCase):
@@ -133,6 +136,11 @@ class TestSearch(unittest.TestCase):
     self.assertEqual('tt0485863', search['exact'][0].id)
     self.assertEqual('Battle of the Warriors', search['exact'][0].name)
     self.assertEqual(2006, search['exact'][0].year)
+
+  def testSearchTitleBySectionUnicode(self):
+    search1 = imdb.SearchTitleBySection('Les Filles De L\'Oc\xc3\xa9an')
+    search2 = imdb.SearchTitleBySection(u'Les Filles De L\'Oc\xe9an')
+    self.assertEqual(len(search1), len(search2))
 
   def testSearchTitle(self):
     search = imdb.SearchTitle('Fatal')

@@ -35,6 +35,7 @@ def LoadPage(path):
 
 
 def Decode(s):
+
   def DecodeEntities(m):
     return unichr(ord(htmlentitydefs.entitydefs.get(m.group(1), m.group(0))))
 
@@ -139,7 +140,8 @@ class Title(object):
 
   @property
   def year_production(self):
-    m = re.search('(?:\(| )([0-9]{4})(?:&\w+;)*\) - IMDb</title>', self.page)
+    regexp = '(?:\(| )([0-9]{4})(?:&\w+;)*([0-9]{4})?\) - IMDb</title>'
+    m = re.search(regexp, self.page)
     return int(m.group(1)) if m else None
 
   @property
@@ -262,8 +264,10 @@ def SearchTitleBySection(title):
   Returns:
     Dict with keys popular, partial, approx and exact, value a list of Titles.
   """
+  if type(title) is unicode:
+    title = title.encode('utf-8')
   # Sections: all, tt, ep, nm, co, kw, ch, vi, qu, bi, pl
-  params = {'q': title.encode('utf-8'), 's': 'tt'}
+  params = {'q': title, 's': 'tt'}
   page = OpenUrl('http://www.imdb.com/find?%s' % urllib.urlencode(params))
 
   result = {'popular': [], 'partial': [], 'approx': [], 'exact': []}
@@ -292,6 +296,14 @@ def SearchTitleBySection(title):
 
 
 def SearchTitle(title, max_per_section=100):
+  """Search a title name (wrapper around SearchTitleBySection).
+
+  Args:
+    title: Search query to search for (title, name, episode, etc.).
+
+  Returns:
+    List with matching Titles.
+  """
   search = SearchTitleBySection(title)
   results = []
   for section in ('popular', 'exact', 'partial', 'approx'):
