@@ -10,6 +10,30 @@ import urllib
 CACHE_DIR = ''
 
 
+def OpenUrl(url):
+
+  class UrlOpener(urllib.FancyURLopener):
+    version = ('Mozilla/6.0 (Windows NT 6.2; WOW64; rv:16.0.1) Gecko/20121011 '
+               'Firefox/16.0.1')
+
+  opener = UrlOpener()
+  opener.addheader('Accept-Language', 'en-US,en')
+  return opener.open(url).read()
+
+
+def LoadPage(path):
+  url = 'http://www.allocine.fr/%s' % path
+  name = re.sub('[^-.\w]', '', url[7:].strip('/').replace('/', '-'))
+  cache = os.path.join(CACHE_DIR, name)
+  if CACHE_DIR and os.path.isfile(cache):
+    page = open(cache).read()
+  else:
+    page = OpenUrl(url)
+    if CACHE_DIR:
+      open(cache, 'w').write(page)
+  return page.decode('utf-8')
+
+
 def Decode(s):
   def DecodeEntities(m):
     return unichr(ord(htmlentitydefs.entitydefs.get(m.group(1), m.group(0))))
@@ -18,11 +42,6 @@ def Decode(s):
   s = re.sub('&#x([0-9a-fA-F]+);', lambda m: unichr(int(m.group(1), 16)), s)
   s = re.sub('&(\w+?);', DecodeEntities, s)
   return s
-
-
-class UrlOpener(urllib.FancyURLopener):
-  version = ('Mozilla/6.0 (Windows NT 6.2; WOW64; rv:16.0.1) Gecko/20121011 '
-             'Firefox/16.0.1')
 
 
 class Movie(object):
@@ -46,6 +65,7 @@ class Movie(object):
     rating: Float with rating (spectators or press, between 0 and 5).
     rating_spectators: Float with spectators rating.
     rating_press: Float with press rating.
+    url: Link to AlloCine page of this movie.
   """
 
   def __init__(self, allocine_id):
@@ -60,21 +80,10 @@ class Movie(object):
   def __repr__(self):
     return '<AlloCine %i>' % self.id
 
-  def _LoadPage(self):
-    cache = os.path.join(CACHE_DIR, '%i.html' % self.id)
-    if CACHE_DIR and os.path.exists(cache):
-      page = open(cache).read()
-    else:
-      url = 'http://www.allocine.fr/film/fichefilm_gen_cfilm=%i.html' % self.id
-      page = UrlOpener().open(url).read()
-      if CACHE_DIR:
-        open(cache, 'w').write(page)
-    return page.decode('utf-8')
-
   @property
   def page(self):
     if not self._page:
-      self._page = self._LoadPage()
+      self._page = LoadPage('film/fichefilm_gen_cfilm=%i.html' % self.id)
     return self._page
 
   @property
@@ -153,3 +162,7 @@ class Movie(object):
     q = self.page.find('</div>', p)
     m = re.search('<span[^>]*>([0-9,]+)<', self.page[p:q])
     return float(m.group(1).replace(',', '.')) if m else None
+
+  @property
+  def url(self):
+    return 'http://www.allocine.fr/film/fichefilm_gen_cfilm=%i.html' % self.id

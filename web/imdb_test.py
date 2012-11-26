@@ -12,7 +12,9 @@ class TestTitle(unittest.TestCase):
   def testItalian(self):
     tt = imdb.Title('tt0073845')
     self.assertEqual(u'L\'uomo che sfid\xf2 l\'organizzazione', tt.name)
-    self.assertEqual(u'El hombre que desafi\xf3 a la organizaci\xf3n', tt.aka)
+    self.assertEqual([u'Antimetopos me tin mafia',
+                      u'El hombre que desafi\xf3 a la organizaci\xf3n',
+                      u'One Man Against the Organization'], tt.aka)
     self.assertEqual('', tt.type)
     self.assertEqual(1975, tt.year)
     self.assertEqual(1975, tt.year_production)
@@ -31,7 +33,8 @@ class TestTitle(unittest.TestCase):
   def testTv(self):
     tt = imdb.Title('tt0437803')
     self.assertEqual('Alien Siege', tt.name)
-    self.assertEqual(u'A F\xf6ld ostroma', tt.aka)
+    self.assertEqual([u'A F\xf6ld ostroma', u'Alien Blood', u'Alien Siege',
+                      u'Etat de si\xe8ge', u'Obca krew'], tt.aka)
     self.assertEqual('TV Movie', tt.type)
     self.assertEqual(2005, tt.year)
     self.assertEqual(2005, tt.year_production)
@@ -60,6 +63,16 @@ class TestTitle(unittest.TestCase):
     self.assertEqual('The Matrix', tt.name)
     self.assertEqual(['Andy Wachowski', 'Lana Wachowski'],
                      [d.name for d in tt.directors])
+
+  def testEmptyAka(self):
+    tt = imdb.Title('tt0291830')
+    self.assertEqual(u'Corps \xe0 coeur', tt.name)
+    self.assertEqual([], tt.aka)
+
+  def testYearWithJunk(self):
+    tt = imdb.Title('tt1965639')
+    self.assertEqual('El clima y las cuatro estaciones', tt.name)
+    self.assertEqual(1994, tt.year)
 
 
 class TestName(unittest.TestCase):
@@ -109,30 +122,17 @@ class TestSearch(unittest.TestCase):
     self.assertEqual(1951, search['approx'][0].year)
     self.assertEqual('', search['approx'][0]._page)
 
-  def testAdvancedSearchTitle(self):
-    search = imdb.AdvancedSearchTitle('27 dresses')
+  def testSearchTitleRedirect(self):
+    search = imdb.SearchTitle('Muk gong')
 
-    self.assertEqual(2, len(search))
-    self.assertEqual('tt0988595', search[0].id)
-    self.assertEqual('27 Dresses', search[0].name)
-    self.assertEqual(2008, search[0].year)
-    # Not checking for type as it is empty and would trigger a page load.
-    self.assertEqual('', search[0]._page)
+    self.assertEqual(0, len(search['popular']))
+    self.assertEqual(0, len(search['partial']))
+    self.assertEqual(0, len(search['approx']))
 
-    self.assertEqual('tt1204215', search[1].id)
-    self.assertEqual('27 Dresses: Movie Special', search[1].name)
-    self.assertEqual(2008, search[1].year)
-    self.assertEqual('Documentary', search[1].type)
-    self.assertEqual('', search[1]._page)
-
-  def testAdvancedSearchTitleEncoded(self):
-    search = imdb.AdvancedSearchTitle(u'The Lion King 1\xbd')
-    self.assertEqual(1, len(search))
-    self.assertEqual(u'The Lion King 1\xbd', search[0].name)
-
-  def testAdvancedSearchTitleReturnsUtf8Page(self):
-    search = imdb.AdvancedSearchTitle('The Three Caballeros')
-    self.assertTrue(search)
+    self.assertEqual(1, len(search['exact']))
+    self.assertEqual('tt0485863', search['exact'][0].id)
+    self.assertEqual('Battle of the Warriors', search['exact'][0].name)
+    self.assertEqual(2006, search['exact'][0].year)
 
 
 if __name__ == '__main__':

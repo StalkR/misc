@@ -10,6 +10,30 @@ import urllib
 CACHE_DIR = ''
 
 
+def OpenUrl(url):
+
+  class UrlOpener(urllib.FancyURLopener):
+    version = ('Mozilla/6.0 (Windows NT 6.2; WOW64; rv:16.0.1) Gecko/20121011 '
+               'Firefox/16.0.1')
+
+  opener = UrlOpener()
+  opener.addheader('Accept-Language', 'en-US,en')
+  return opener.open(url).read()
+
+
+def LoadPage(path):
+  url = 'http://www.imdb.com/%s' % path
+  name = re.sub('[^-.\w]', '', url[7:].strip('/').replace('/', '-'))
+  cache = os.path.join(CACHE_DIR, name + '.html')
+  if CACHE_DIR and os.path.isfile(cache):
+    page = open(cache).read()
+  else:
+    page = OpenUrl(url)
+    if CACHE_DIR:
+      open(cache, 'w').write(page)
+  return page.decode('utf-8')
+
+
 def Decode(s):
   def DecodeEntities(m):
     return unichr(ord(htmlentitydefs.entitydefs.get(m.group(1), m.group(0))))
@@ -28,11 +52,6 @@ def NoDups(inlist):
   return outlist
 
 
-class UrlOpener(urllib.FancyURLopener):
-  version = ('Mozilla/6.0 (Windows NT 6.2; WOW64; rv:16.0.1) Gecko/20121011 '
-             'Firefox/16.0.1')
-
-
 class Title(object):
   """Class to represent an IMDb title with its information.
 
@@ -41,8 +60,9 @@ class Title(object):
 
   Properties, empty when not available:
     page: String with IMDb html page of this title.
+    releaseinfo: String with IMDb release info html page of this title.
     name: String with title name.
-    aka: String with also known as title name.
+    aka: List of strings with title names this release is also known as.
     type: String with title type (e.g. 'TV Movie', usually empty for movie).
     year: Integer with movie year (production or release).
     production_year: Integer with production year.
@@ -56,54 +76,58 @@ class Title(object):
     languages: List of strings with movie languages.
     nationalities: List of strings with movie nationalities.
     description: String with short movie description, if available.
+    url: Link to IMDb page of this title.
   """
 
-  def __init__(self, imdb_id, name='', year='', ttype=''):
+  def __init__(self, imdb_id, name='', year=''):
     """Create a new IMDb title object.
 
     Args:
       imdb_id: String with IMDb title ID.
       name: String with title name if known, used if page not loaded.
       year: Integer with title year if known, used if page not loaded.
-      ttype: String with title type if known, used if page not loaded.
     """
     self.id = imdb_id
     self._name = name
     self._year = year
-    self._type = ttype
     self._page = ''
+    self._releaseinfo = ''
 
   def __repr__(self):
     return '<IMDb %s>' % self.id
 
-  def _LoadPage(self):
-    cache = os.path.join(CACHE_DIR, '%s.html' % self.id)
-    if CACHE_DIR and os.path.exists(cache):
-      page = open(cache).read()
-    else:
-      url = 'http://www.imdb.com/title/%s/' % self.id
-      page = UrlOpener().open(url).read()
-      if CACHE_DIR:
-        open(cache, 'w').write(page)
-    return page.decode('utf-8')
-
   @property
   def page(self):
     if not self._page:
-      self._page = self._LoadPage()
+      self._page = LoadPage('title/%s/' % self.id)
     return self._page
+
+  @property
+  def releaseinfo(self):
+    if not self._releaseinfo:
+      self._releaseinfo = LoadPage('title/%s/releaseinfo' % self.id)
+    return self._releaseinfo
 
   @property
   def name(self):
     if not self._page and self._name:
       return self._name
     m = re.search('Title: <strong>([^<]+)</strong>', self.page)
+    if not m:
+      m = re.search('<meta property="og:title" content="(.*?) \(', self.page)
     return Decode(m.group(1)) if m else ''
 
   @property
   def aka(self):
-    m = re.search('Also Known As:</h4> (.*)', self.page)
-    return Decode(m.group(1)) if m else ''
+    if 'Also Known As:</h4>' not in self.page:
+      return []
+    m = re.search('Also Known As \(AKA\)(.*?)</table>', self.releaseinfo, re.S)
+    if not m:
+      return []
+    names = []
+    for name in re.findall('<tr>\s*<td>([^<]+)', m.group(1)):
+      names.append(Decode(name.strip()))
+    return names
 
   @property
   def year(self):
@@ -115,7 +139,7 @@ class Title(object):
 
   @property
   def year_production(self):
-    m = re.search('\((?:<a[^>]*>)?([0-9]+)(?:</a>)?\)</span>', self.page)
+    m = re.search('(?:\(| )([0-9]{4})(?:&\w+;)*\) - IMDb</title>', self.page)
     return int(m.group(1)) if m else None
 
   @property
@@ -125,8 +149,6 @@ class Title(object):
 
   @property
   def type(self):
-    if not self._page and self._type:
-      return self._type
     m = re.search('<div class="infobar">([^<]+)', self.page)
     return Decode(m.group(1)).strip(u'\r\n\xa0-') if m else ''
 
@@ -182,6 +204,10 @@ class Title(object):
     m = re.search('<p itemprop="description">([^<]+)', self.page)
     return Decode(m.group(1).strip()) if m else ''
 
+  @property
+  def url(self):
+    return 'http://www.imdb.com/title/%s/' % self.id
+
 
 class Name(object):
   """Class to represent an IMDb name with its information.
@@ -192,6 +218,7 @@ class Name(object):
   Properties, empty when not available:
     page: String with IMDb html page of this name.
     name: String with full name.
+    url: Link to IMDb page of this name.
   """
 
   def __init__(self, imdb_id, name=''):
@@ -208,21 +235,10 @@ class Name(object):
   def __repr__(self):
     return '<IMDb %s>' % self.id
 
-  def _LoadPage(self):
-    cache = os.path.join(CACHE_DIR, '%s.html' % self.id)
-    if CACHE_DIR and os.path.exists(cache):
-      page = open(cache).read()
-    else:
-      url = 'http://www.imdb.com/name/%s/' % self.id
-      page = UrlOpener().open(url).read()
-      if CACHE_DIR:
-        open(cache, 'w').write(page)
-    return page.decode('utf-8')
-
   @property
   def page(self):
     if not self._page:
-      self._page = self._LoadPage()
+      self._page = LoadPage('name/%s/' % self.id)
     return self._page
 
   @property
@@ -232,55 +248,44 @@ class Name(object):
     m = re.search('class="header" itemprop="name">([^<]+)', self.page)
     return Decode(m.group(1).strip()) if m else ''
 
+  @property
+  def url(self):
+    return 'http://www.imdb.com/name/%s/' % self.id
 
-def SearchTitle(query):
+
+def SearchTitle(title):
   """Search a title name (popular, partial, approx or exact match).
 
   Args:
-    query: Search query to search for (title, name, episode, etc.).
+    title: Search query to search for (title, name, episode, etc.).
 
   Returns:
     Dict with keys popular, partial, approx and exact, value a list of Titles.
   """
   # Sections: all, tt, ep, nm, co, kw, ch, vi, qu, bi, pl
-  params = {'q': query.encode('utf-8'), 's': 'tt'}
-  url = 'http://www.imdb.com/find?%s' % urllib.urlencode(params)
-  page = UrlOpener().open(url).read()
+  params = {'q': title.encode('utf-8'), 's': 'tt'}
+  page = OpenUrl('http://www.imdb.com/find?%s' % urllib.urlencode(params))
 
-  def ParseResults(search):
+  result = {'popular': [], 'partial': [], 'approx': [], 'exact': []}
+
+  # IMDb redirects to title page when there is only one result.
+  regexp = '<link rel="canonical" href="http://www.imdb.com/title/(tt[0-9]+)/"'
+  match = re.search(regexp, page)
+  if match:
+    result['exact'] = [Title(match.group(1))]
+    return result
+
+  def ParseResults(page, section):
     results = []
-    match = re.search(re.escape(search) + '(.*?)</table>', page)
+    match = re.search(re.escape(section) + '(.*?)</table>', page)
     if match:
       regexp = '<a href="/title/([tt0-9]+)/"[^>]+>([^<]+)</a> \(([0-9]+)\)'
       for tt, name, year in re.findall(regexp, match.group(1)):
         results.append(Title(tt, name=Decode(name), year=int(year)))
     return results
 
-  return {'popular': ParseResults('Popular Titles'),
-          'partial': ParseResults('Titles (Partial Matches)'),
-          'approx': ParseResults('Titles (Approx Matches)'),
-          'exact': ParseResults('Titles (Exact Matches)')}
-
-
-def AdvancedSearchTitle(title):
-  """Search an exact title name in Advanced Search.
-
-  Args:
-    title: Title string, case sensitive.
-
-  Returns:
-    List of Title objects matching this title.
-  """
-  # From http://www.imdb.com/search/title - all except TV Episode, Video Game
-  types = ('feature', 'tv_movie', 'tv_series', 'tv_special', 'mini_series',
-           'documentary', 'short', 'video', 'unknown')
-  params = {'title': title.encode('utf-8'), 'title_type': ','.join(types)}
-  url = 'http://www.imdb.com/search/title?%s' % urllib.urlencode(params)
-  page = UrlOpener().open(url).read()
-  regexp = ('<a href="/title/([tt0-9]+)/">([^<]+)</a>\s*'
-            '<span class="year_type">\(([0-9]+)\s?(.*?)\)')
-  results = []
-  for tt, name, year, ttype in re.findall(regexp, page):
-    results.append(Title(tt, name=Decode(name), year=int(year),
-                         ttype=Decode(ttype)))
-  return results
+  result['popular'] = ParseResults(page, 'Popular Titles')
+  result['partial'] = ParseResults(page, 'Titles (Partial Matches)')
+  result['approx'] = ParseResults(page, 'Titles (Approx Matches)')
+  result['exact'] = ParseResults(page, 'Titles (Exact Matches)')
+  return result
