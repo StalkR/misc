@@ -88,8 +88,8 @@ class TestName(unittest.TestCase):
 
 class TestSearch(unittest.TestCase):
 
-  def testSearchTitle(self):
-    search = imdb.SearchTitle('Lord of the rings')
+  def testSearchTitleBySection(self):
+    search = imdb.SearchTitleBySection('Lord of the rings')
     self.assertEqual(sorted(['popular', 'partial', 'approx', 'exact']),
                      sorted(search.keys()))
 
@@ -113,8 +113,8 @@ class TestSearch(unittest.TestCase):
     self.assertEqual(1990, search['exact'][0].year)
     self.assertEqual('', search['exact'][0]._page)
 
-  def testSearchTitleApprox(self):
-    search = imdb.SearchTitle('rox rouky')
+  def testSearchTitleBySectionApprox(self):
+    search = imdb.SearchTitleBySection('rox rouky')
 
     self.assertNotEqual(0, len(search['approx']))
     self.assertEqual('tt2351044', search['approx'][0].id)
@@ -122,8 +122,8 @@ class TestSearch(unittest.TestCase):
     self.assertEqual(1951, search['approx'][0].year)
     self.assertEqual('', search['approx'][0]._page)
 
-  def testSearchTitleRedirect(self):
-    search = imdb.SearchTitle('Muk gong')
+  def testSearchTitleBySectionRedirect(self):
+    search = imdb.SearchTitleBySection('Muk gong')
 
     self.assertEqual(0, len(search['popular']))
     self.assertEqual(0, len(search['partial']))
@@ -133,6 +133,11 @@ class TestSearch(unittest.TestCase):
     self.assertEqual('tt0485863', search['exact'][0].id)
     self.assertEqual('Battle of the Warriors', search['exact'][0].name)
     self.assertEqual(2006, search['exact'][0].year)
+
+  def testSearchTitle(self):
+    search = imdb.SearchTitle('Fatal')
+    self.assertTrue(len(search) > 5)
+    self.assertEqual(imdb.Title, type(search[0]))
 
 
 if __name__ == '__main__':

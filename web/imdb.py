@@ -206,7 +206,7 @@ class Title(object):
 
   @property
   def url(self):
-    return 'http://www.imdb.com/title/%s/' % self.id
+    return 'http://www.imdb.com/title/%s' % self.id
 
 
 class Name(object):
@@ -253,7 +253,7 @@ class Name(object):
     return 'http://www.imdb.com/name/%s/' % self.id
 
 
-def SearchTitle(title):
+def SearchTitleBySection(title):
   """Search a title name (popular, partial, approx or exact match).
 
   Args:
@@ -289,3 +289,12 @@ def SearchTitle(title):
   result['approx'] = ParseResults(page, 'Titles (Approx Matches)')
   result['exact'] = ParseResults(page, 'Titles (Exact Matches)')
   return result
+
+
+def SearchTitle(title, max_per_section=100):
+  search = SearchTitleBySection(title)
+  results = []
+  for section in ('popular', 'exact', 'partial', 'approx'):
+    for title in search[section][:max_per_section]:
+      results.append(title)
+  return results
