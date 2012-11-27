@@ -88,7 +88,9 @@ class Title(object):
       name: String with title name if known, used if page not loaded.
       year: Integer with title year if known, used if page not loaded.
     """
-    self.id = imdb_id
+    if not re.match('^tt[0-9]+$', imdb_id):
+      raise ValueError('Incorrect IMDb id')
+    self.id = imdb_id.lower()
     self._name = name
     self._year = year
     self._page = ''
@@ -152,7 +154,11 @@ class Title(object):
   @property
   def type(self):
     m = re.search('<div class="infobar">([^<]+)', self.page)
-    return Decode(m.group(1)).strip(u'\r\n\xa0-') if m else ''
+    if m and m.group(1).strip():
+      return Decode(m.group(1)).strip(u'\r\n\xa0-')
+    regexp = '\(([^0-9]+)[0-9]{4}(?:&\w+;)*([0-9]{4})?\) - IMDb</title>'
+    m = re.search(regexp, self.page)
+    return Decode(m.group(1).strip()) if m else ''
 
   @property
   def rating(self):
@@ -230,6 +236,8 @@ class Name(object):
       imdb_id: String with IMDb name ID.
       name: String with full name if known, used if page not loaded.
     """
+    if not re.match('^nm[0-9]+$', imdb_id):
+      raise ValueError('Incorrect IMDb id')
     self.id = imdb_id
     self._name = name
     self._page = ''
@@ -283,7 +291,7 @@ def SearchTitleBySection(title):
     results = []
     match = re.search(re.escape(section) + '(.*?)</table>', page)
     if match:
-      regexp = '<a href="/title/([tt0-9]+)/"[^>]+>([^<]+)</a> \(([0-9]+)\)'
+      regexp = '<a href="/title/([tt0-9]+)/"[^>]+>([^<]+)</a> \(([0-9]+)'
       for tt, name, year in re.findall(regexp, match.group(1)):
         results.append(Title(tt, name=Decode(name), year=int(year)))
     return results

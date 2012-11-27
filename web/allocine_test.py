@@ -4,7 +4,7 @@
 import allocine
 import unittest
 
-allocine.CACHE_DIR = 'cache'
+allocine.CACHE_DIR = ''
 
 
 class TestMovie(unittest.TestCase):

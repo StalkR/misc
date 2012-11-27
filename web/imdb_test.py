@@ -4,10 +4,13 @@
 import imdb
 import unittest
 
-imdb.CACHE_DIR = 'cache'
+imdb.CACHE_DIR = ''
 
 
 class TestTitle(unittest.TestCase):
+
+  def testBadId(self):
+    self.assertRaises(ValueError, imdb.Title, 'wrong')
 
   def testItalian(self):
     tt = imdb.Title('tt0073845')
@@ -77,8 +80,17 @@ class TestTitle(unittest.TestCase):
     self.assertEqual('Brothers', tt.name)
     self.assertEqual(1984, tt.year)  # TV Series 1984-1989
 
+  def testVideoGame(self):
+    tt = imdb.Title('tt1371159')
+    self.assertEqual('Iron Man 2', tt.name)
+    self.assertEqual(2010, tt.year)
+    self.assertEqual('Video Game', tt.type)
+
 
 class TestName(unittest.TestCase):
+
+  def testBadId(self):
+    self.assertRaises(ValueError, imdb.Name, 'wrong')
 
   def testDirector(self):
     nm = imdb.Name('nm0905152')
