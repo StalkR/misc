@@ -55,6 +55,7 @@ class TestTitle(unittest.TestCase):
         self.assertEqual('Earth is attacked by the Kulkus, a hostile alien '
                          'breed infected by a lethal virus and needing human '
                          'blood to develop an antidote...', tt.description)
+        self.assertEqual(tt.id, tt.poster.title.id)
 
     def testMultipleLanguages(self):
         tt = imdb.Title('tt1179034')
@@ -86,10 +87,6 @@ class TestTitle(unittest.TestCase):
         self.assertEqual('Iron Man 2', tt.name)
         self.assertEqual(2010, tt.year)
         self.assertEqual('Video Game', tt.type)
-
-    def testMedia(self):
-        tt = imdb.Title('tt0870204')
-        self.assertEqual(tt.id, tt.media.title.id)
 
 
 class TestName(unittest.TestCase):
@@ -124,7 +121,7 @@ class TestSearch(unittest.TestCase):
         self.assertEqual('The Lord of the Rings: The Fellowship of the Ring',
                          search[0].name)
         self.assertEqual(2001, search[0].year)
-        self.assertEqual('', search[0]._page)
+        self.assertFalse(search[0]._page_loaded)
 
     def testSearchTitleRedirect(self):
         search = imdb.SearchTitle('Rocky Marciano vs. Rex Layne')

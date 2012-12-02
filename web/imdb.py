@@ -61,8 +61,6 @@ class Title(object):
 
     Properties, empty when not available:
         url: Link to IMDb page of this title.
-        page: String with IMDb html page of this title.
-        releaseinfo: String with IMDb release info html page of this title.
         name: String with title name.
         aka: List of strings with title names this release is also known as.
         type: String with title type (e.g. 'TV Series', 'TV Movie', etc.).
@@ -78,6 +76,8 @@ class Title(object):
         languages: List of strings with movie languages.
         nationalities: List of strings with movie nationalities.
         description: String with short movie description, if available.
+        poster: Poster as a Media object.
+        media: List of all Media objects.
     """
 
     def __init__(self, imdb_id, name='', year=''):
@@ -93,8 +93,8 @@ class Title(object):
         self.id = str(imdb_id.lower())
         self._name = name
         self._year = year
-        self._page = ''
-        self._releaseinfo = ''
+        self.__page = ''
+        self.__releaseinfo = ''
 
     def __repr__(self):
         name = self.name.encode('utf-8')
@@ -107,34 +107,38 @@ class Title(object):
         return 'http://www.imdb.com/title/%s' % self.id
 
     @property
-    def page(self):
-        if not self._page:
-            self._page = LoadUrl(self.url).decode('utf-8')
-        return self._page
+    def _page(self):
+        if not self._page_loaded:
+            self.__page = LoadUrl(self.url).decode('utf-8')
+        return self.__page
 
     @property
-    def releaseinfo(self):
-        if not self._releaseinfo:
-            url = self.url + '/releaseinfo'
-            self._releaseinfo = LoadUrl(url).decode('utf-8')
-        return self._releaseinfo
+    def _page_loaded(self):
+        return bool(self.__page)
 
     @property
     def name(self):
-        if not self._page and self._name:
+        if not self._page_loaded and self._name:
             return self._name
-        m = re.search('Title: <strong>([^<]+)</strong>', self.page)
+        m = re.search('Title: <strong>([^<]+)</strong>', self._page)
         if not m:
             regexp = '<meta property="og:title" content="(.*?) \('
-            m = re.search(regexp, self.page)
+            m = re.search(regexp, self._page)
         return Decode(m.group(1)) if m else ''
 
     @property
+    def _releaseinfo(self):
+        if not self.__releaseinfo:
+            url = self.url + '/releaseinfo'
+            self.__releaseinfo = LoadUrl(url).decode('utf-8')
+        return self.__releaseinfo
+
+    @property
     def aka(self):
-        if 'Also Known As:</h4>' not in self.page:
+        if 'Also Known As:</h4>' not in self._page:
             return []
         regexp = 'Also Known As \(AKA\)(.*?)</table>'
-        m = re.search(regexp, self.releaseinfo, re.S)
+        m = re.search(regexp, self._releaseinfo, re.S)
         if not m:
             return []
         names = []
@@ -144,7 +148,7 @@ class Title(object):
 
     @property
     def year(self):
-        if not self._page and self._year:
+        if not self._page_loaded and self._year:
             return self._year
         if self.year_production:
             return self.year_production
@@ -153,44 +157,44 @@ class Title(object):
     @property
     def year_production(self):
         regexp = '(?:\(| )([0-9]{4})(?:&\w+;)*([0-9]{4})?\) - IMDb</title>'
-        m = re.search(regexp, self.page)
+        m = re.search(regexp, self._page)
         return int(m.group(1)) if m else None
 
     @property
     def year_release(self):
-        m = re.search('itemprop="datePublished" datetime="([^-"]+)', self.page)
+        m = re.search('itemprop="datePublished" datetime="([^-"]+)', self._page)
         return int(m.group(1)) if m else None
 
     @property
     def type(self):
-        m = re.search('<div class="infobar">([^<]+)', self.page)
+        m = re.search('<div class="infobar">([^<]+)', self._page)
         if m and m.group(1).strip():
             return Decode(m.group(1)).strip(u'\r\n\xa0-')
         regexp = '\(([^0-9]+)[0-9]{4}(?:&\w+;)*([0-9]{4})?\) - IMDb</title>'
-        m = re.search(regexp, self.page)
+        m = re.search(regexp, self._page)
         return Decode(m.group(1).strip()) if m else ''
 
     @property
     def rating(self):
         regexp = 'star-box-giga-star">([0-9.]+)'
-        m = re.search(regexp, self.page.replace('\n', ''))
+        m = re.search(regexp, self._page.replace('\n', ''))
         return float(m.group(1)) if m else None
 
     @property
     def duration(self):
         regexp = 'itemprop="duration" datetime="(?:PT)?([0-9HM]+)"'
-        m = re.search(regexp, self.page)
+        m = re.search(regexp, self._page)
         return m.group(1).lower() if m else ''
 
     @property
     def directors(self):
         regexp = 'href="/name/([nm0-9]+)/" +itemprop="director"[^>]*>([^<]+)'
-        matches = NoDups(re.findall(regexp, self.page))
+        matches = NoDups(re.findall(regexp, self._page))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
     @property
     def writers(self):
-        m = re.search('Writers:\s*</h4>(.*?)</div>', self.page, re.S)
+        m = re.search('Writers:\s*</h4>(.*?)</div>', self._page, re.S)
         if not m:
             return []
         regexp = 'href="/name/([nm0-9]+)/".*?>([^<]+)'
@@ -200,38 +204,42 @@ class Title(object):
     @property
     def actors(self):
         regexp = 'td class="name">.*?href="/name/([nm0-9]+)/".*?>([^<]+)'
-        matches = NoDups(re.findall(regexp, self.page, re.S))
+        matches = NoDups(re.findall(regexp, self._page, re.S))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
     @property
     def genres(self):
-        matches = NoDups(re.findall('itemprop="genre"\s*>([^<]+)', self.page))
+        matches = NoDups(re.findall('itemprop="genre"\s*>([^<]+)', self._page))
         return [Decode(genre) for genre in matches]
 
     @property
     def languages(self):
         regexp = 'itemprop="inLanguage"\s*>([^<]+)'
-        matches = NoDups(re.findall(regexp, self.page))
+        matches = NoDups(re.findall(regexp, self._page))
         return [Decode(language) for language in matches]
 
     @property
     def nationalities(self):
         regexp = 'href="/country/[^"]+"[^>]+>([^<]+)'
-        matches = NoDups(re.findall(regexp, self.page))
+        matches = NoDups(re.findall(regexp, self._page))
         return [Decode(nationality) for nationality in matches]
 
     @property
     def description(self):
-        m = re.search('<p itemprop="description">([^<]+)', self.page)
+        m = re.search('<p itemprop="description">([^<]+)', self._page)
         return Decode(m.group(1).strip()) if m else ''
 
     @property
-    def media(self):
+    def poster(self):
         regexp = 'id="img_primary">.*?href="/media/([^/]+).*?<img src="([^"]+)'
-        m = re.search(regexp, self.page, re.S)
+        m = re.search(regexp, self._page, re.S)
         if not m:
             return None
         return Media(m.group(1), self, content_url=m.group(2))
+
+    @property
+    def media(self):
+        raise NotImplementedError
 
 
 class Name(object):
@@ -242,7 +250,6 @@ class Name(object):
 
     Properties, empty when not available:
         url: Link to IMDb page of this name.
-        page: String with IMDb html page of this name.
         name: String with full name.
     """
 
@@ -257,7 +264,7 @@ class Name(object):
             raise ValueError('Incorrect IMDb id')
         self.id = str(imdb_id)
         self._name = name
-        self._page = ''
+        self.__page = ''
 
     def __repr__(self):
         return '<IMDb %s: %s>' % (self.id, self.name.encode('utf-8'))
@@ -267,16 +274,20 @@ class Name(object):
         return 'http://www.imdb.com/name/%s' % self.id
 
     @property
-    def page(self):
-        if not self._page:
-            self._page = LoadUrl(self.url).decode('utf-8')
-        return self._page
+    def _page(self):
+        if not self._page_loaded:
+            self.__page = LoadUrl(self.url).decode('utf-8')
+        return self.__page
+
+    @property
+    def _page_loaded(self):
+        return bool(self.__page)
 
     @property
     def name(self):
-        if not self._page and self._name:
+        if not self._page_loaded and self._name:
             return self._name
-        m = re.search('class="header" itemprop="name">([^<]+)', self.page)
+        m = re.search('class="header" itemprop="name">([^<]+)', self._page)
         return Decode(m.group(1).strip()) if m else ''
 
 
@@ -289,7 +300,6 @@ class Media(object):
 
     Properties, empty when not available:
         url: Link to IMDb page of this media.
-        page: String with IMDb html page of this media.
         content_url: Link to IMDb image of this media, full-size.
         content: IMDb image of this media, full-size.
     """
@@ -307,7 +317,7 @@ class Media(object):
         self.id = str(imdb_id)
         self.title = title
         self._content_url = content_url
-        self._page = ''
+        self.__page = ''
 
     def __repr__(self):
         return '<IMDb %s/%s>' % (self.id, self.title.id)
@@ -317,17 +327,21 @@ class Media(object):
         return 'http://www.imdb.com/media/%s/%s' % (self.id, self.title.id)
 
     @property
-    def page(self):
-        if not self._page:
-            self._page = LoadUrl(self.url).decode('utf-8')
-        return self._page
+    def _page(self):
+        if not self._page_loaded:
+            self.__page = LoadUrl(self.url).decode('utf-8')
+        return self.__page
+
+    @property
+    def _page_loaded(self):
+        return bool(self.__page)
 
     @property
     def content_url(self):
-        if not self._page and self._content_url:
+        if not self._page_loaded and self._content_url:
             url = self._content_url
         else:
-            m = re.search('<img id="primary-img".*?src="([^"]+)', self.page)
+            m = re.search('<img id="primary-img".*?src="([^"]+)', self._page)
             url = m.group(1) if m else ''
         # Remove everything after @@ except extension for full image version.
         return re.sub('@@.*?\.jpg', '@@.jpg', url)

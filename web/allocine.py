@@ -53,7 +53,6 @@ class Movie(object):
 
     Properties, empty when not available:
         url: Link to AlloCine page of this movie.
-        page: String with AlloCine html page of this movie.
         name: String with movie name.
         original_name: String with original movie name if foreign movie.
         year: Integer with movie year (production or release).
@@ -76,7 +75,7 @@ class Movie(object):
             allocine_id: Integer with AlloCine movie ID.
         """
         self.id = int(allocine_id)    # Work if a string number is supplied.
-        self._page = ''
+        self.__page = ''
 
     def __repr__(self):
         return '<AlloCine %i>' % self.id
@@ -87,19 +86,23 @@ class Movie(object):
                 % self.id)
 
     @property
-    def page(self):
-        if not self._page:
-            self._page = LoadUrl(self.url).decode('utf-8')
-        return self._page
+    def _page(self):
+        if not self._page_loaded:
+            self.__page = LoadUrl(self.url).decode('utf-8')
+        return self.__page
+
+    @property
+    def _page_loaded(self):
+        return bool(self.__page)
 
     @property
     def name(self):
-        m = re.search('property="og:title" content="([^"]+)"', self.page)
+        m = re.search('property="og:title" content="([^"]+)"', self._page)
         return Decode(m.group(1)) if m else ''
 
     @property
     def original_name(self):
-        m = re.search('Titre original</div></th><td>([^<]+)</td>', self.page)
+        m = re.search('Titre original</div></th><td>([^<]+)</td>', self._page)
         return Decode(m.group(1)) if m else self.name
 
     @property
@@ -110,27 +113,27 @@ class Movie(object):
 
     @property
     def year_production(self):
-        m = re.search(' de production</div></th><td><span[^>]*>([^<]+)', self.page)
+        m = re.search(' de production</div></th><td><span[^>]*>([^<]+)', self._page)
         return int(m.group(1)) if m else None
 
     @property
     def year_release(self):
-        m = re.search('itemprop="datePublished" content="([^-"]+)', self.page)
+        m = re.search('itemprop="datePublished" content="([^-"]+)', self._page)
         return int(m.group(1)) if m else None
 
     @property
     def duration(self):
-        m = re.search('itemprop="duration" content="(?:PT)?([0-9HM]+)"', self.page)
+        m = re.search('itemprop="duration" content="(?:PT)?([0-9HM]+)"', self._page)
         return m.group(1).lower() if m else ''
 
     @property
     def directors(self):
         regexp = 'itemprop="director" .*? itemprop="name">([^<]+)'
-        return [Decode(name) for name in re.findall(regexp, self.page)]
+        return [Decode(name) for name in re.findall(regexp, self._page)]
 
     @property
     def actors(self):
-        m = re.search('itemprop="actors" (.*)', self.page)
+        m = re.search('itemprop="actors" (.*)', self._page)
         if not m:
             return []
         matches = re.findall('itemprop="name">([^<]+)', m.group(1))
@@ -138,12 +141,12 @@ class Movie(object):
 
     @property
     def genres(self):
-        matches = re.findall('itemprop="genre">([^<]+)', self.page)
+        matches = re.findall('itemprop="genre">([^<]+)', self._page)
         return [Decode(name) for name in matches]
 
     @property
     def nationalities(self):
-        m = re.search('Nationalit(.*?)</div>', self.page, re.S)
+        m = re.search('Nationalit(.*?)</div>', self._page, re.S)
         if not m:
             return []
         matches = re.findall('<span[^>]*>([^<]+)', m.group(1))
@@ -157,14 +160,14 @@ class Movie(object):
 
     @property
     def rating_spectators(self):
-        p = self.page.find('Spectateurs\n</span>')
-        q = self.page.find('</div>', p)
-        m = re.search('<span[^>]*>([0-9,]+)<', self.page[p:q])
+        p = self._page.find('Spectateurs\n</span>')
+        q = self._page.find('</div>', p)
+        m = re.search('<span[^>]*>([0-9,]+)<', self._page[p:q])
         return float(m.group(1).replace(',', '.')) if m else None
 
     @property
     def rating_press(self):
-        p = self.page.find('Presse\n</span>')
-        q = self.page.find('</div>', p)
-        m = re.search('<span[^>]*>([0-9,]+)<', self.page[p:q])
+        p = self._page.find('Presse\n</span>')
+        q = self._page.find('</div>', p)
+        m = re.search('<span[^>]*>([0-9,]+)<', self._page[p:q])
         return float(m.group(1).replace(',', '.')) if m else None
