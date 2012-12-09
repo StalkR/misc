@@ -28,7 +28,7 @@ def main(argv):
     if t.rating:
         infos.append('%.1f/10' % t.rating)
     infos.extend([t.url, 'tg'])
-    print ' - '.join(infos)
+    print ' - '.join(i.encode('utf-8') for i in infos)
 
 
 if __name__ == '__main__':
