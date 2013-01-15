@@ -1,0 +1,185 @@
+#!/bin/bash
+# List OpenVZ containers nicely (extends vzlist).
+
+# Obtain formatted size of an integer.
+# Usage: fmt <integer>
+fmt() {
+  local mult unit size digits float
+  mult=1
+  for unit in "" k M G T P E Z Y; do
+    if [[ $1 -lt $[$mult * 1024] ]]; then
+      break
+    fi
+    mult=$[$mult * 1024]
+  done
+  size=$[$1 / $mult]
+  if [[ $size -lt 10 ]]; then
+    digits=1
+  else
+    digits=0
+  fi
+  if [[ $digits -eq 0 ]]; then
+    printf "%i%s" $size $unit
+  else
+    fact=1
+    while [[ $digits -ne 0 ]]; do
+      fact=$[$fact * 10]
+      digits=$[$digits - 1]
+    done
+    float=$[$fact * $1 / $mult - $fact * $size]
+    printf "%i.%0i%s" $size $float $unit
+  fi
+}
+
+ve_name() {
+  if [[ $1 -eq 0 ]]; then
+    hostname -s
+    return
+  fi
+  local file f1 f2
+  file="/etc/vz/conf/$1.conf"
+  if [[ -f "$file" ]]; then
+    while read f1 f2; do
+      if [[ "${f1:0:9}" = "HOSTNAME=" ]]; then
+        echo "${f1:9}"
+        return
+      fi
+    done < "$file"
+  fi
+  file="/var/lib/vz/private/$1/etc/hostname"
+  if [[ -f "$file" ]]; then
+    cat "$file"
+    return
+  fi
+  echo "-"
+}
+
+ve_ips() {
+  local prefix file ips f1 f2 f3
+  prefix=
+  if [[ $1 -ne 0 ]]; then
+    prefix="/var/lib/vz/private/$1"
+  fi
+  file="$prefix/etc/network/interfaces"
+  if [[ ! -f "$file" ]]; then
+    echo "-"
+    return
+  fi
+  ips=""
+  while read f1 f2 f3; do
+    if [[ "$f1" != "address" ]] || \
+       [[ "$f2" = "127.0.0.1" ]] || [[ "$f2" = "::1" ]]; then
+      continue
+    fi
+    ips="$ips,$f2"
+  done < "$file"
+  echo "${ips:1}"
+}
+
+ve_gw() {
+  local prefix file f1 f2 f3 f4 f5 f6 f7 f8
+  prefix=
+  if [[ $1 -ne 0 ]]; then
+    prefix="/var/lib/vz/private/$1"
+  fi
+  file="$prefix/etc/network/interfaces"
+  if [[ ! -f "$file" ]]; then
+    echo "-"
+    return
+  fi
+  while read f1 f2 f3 f4 f5 f6 f7 f8; do
+    if [[ "$f2" = "venet0" ]]; then
+      echo "(venet)"
+      return
+    fi
+    if [[ "$f1" = "gateway" ]]; then
+      echo "$f2"
+      return
+    fi
+    if [[ "$f5" = "default" ]] && [[ "$f6" = "via" ]]; then
+      echo "$f7"
+      return
+    fi
+  done < "$file"
+  echo "-"
+}
+
+ve_list() {
+  local total running list out veid status cpu name load procs \
+    vm vmb vml vmp disk disks diskh diskp ips gw name cols line
+  total=0
+  running=0
+  list=$(vzlist -aHo veid,status,cpuunits,hostname,laverage,numproc,\
+privvmpages,privvmpages.b,privvmpages.l,diskspace,diskspace.s,diskspace.h)
+  out="ID NAME STATUS LOAD_AVERAGE PROC UNITS RAM % BAR/LIM DISK % SL/HL"
+  out="$out IP(s) GATEWAY"
+  while read veid status cpu name load procs vm vmb vml disk disks diskh; do
+    if [[ "$name" = "-" ]]; then
+      name=$(ve_name $veid)
+    fi
+    name=${name%%.*}
+    vmp="-"
+    if [[ "$vm" != "-" ]]; then
+      vmp=$(printf "%3i%%" $[100 * $vm / $vmb])
+      vm=$(fmt $[$vm * 4096])
+    fi
+    vmb=$(fmt $[$vmb * 4096])
+    vml=$(fmt $[$vml * 4096])
+    diskp="-"
+    if [[ "$disk" != "-" ]]; then
+      diskp=$(printf "%3i%%" $[100 * $disk / $disks])
+      disk=$(fmt $[$disk * 1024])
+    fi
+    disks=$(fmt $[$disks * 1024])
+    diskh=$(fmt $[$diskh * 1024])
+    ips=$(ve_ips $veid)
+    gw=$(ve_gw $veid)
+    out="$out^$veid $name $status $load $procs $cpu $vm $vmp $vmb:$vml"
+    out="$out $disk $diskp $disks:$diskh $ips $gw"
+    total=$[$total + 1]
+    if [[ "$status" = "running" ]]; then
+      running=$[$running + 1]
+    fi
+  done <<< "$list"
+  cols=$(tput cols)
+  while read line; do
+    if [[ $cols -gt 0 ]]; then
+      echo "${line:0:$cols}"
+    else
+      echo "$line"
+    fi
+  done < <(tr '^' '\n' <<< "$out" | column -t)
+  printf "Total VE: %i running, %i not running, %i total.\n" $running \
+    $[$total - $running] $total
+}
+
+hn_memory() {
+  local ram_used ram_total swap_used swap_total
+  free=$(free -b)
+  ram_used=$(awk '$2=="buffers/cache:"{print $3}' <<< "$free")
+  ram_total=$(awk '$1=="Mem:"{print $2}' <<< "$free")
+  swap_used=$(awk '$1=="Swap:"{print $3}' <<< "$free")
+  swap_total=$(awk '$1=="Swap:"{print $2}' <<< "$free")
+  printf "Hardware Node RAM: %s/%s (%i%%) - Swap: %s/%s (%i%%)\n" \
+    $(fmt $ram_used) $(fmt ram_total) $[100*$ram_used/$ram_total] \
+    $(fmt $swap_used) $(fmt swap_total) $[100*$swap_used/$swap_total]
+}
+
+cpu_check() {
+  local check util power
+  check=$(vzcpucheck)
+  util=$(awk 'NR==1{print $4}' <<< "$check")
+  power=$(awk 'NR==2{print $5}' <<< "$check")
+  printf "CPU units utilization: %i/%i (%i%%)\n" \
+    $util $power $[100*$util/$power]
+}
+
+main() {
+  ve_list
+  hn_memory
+  cpu_check
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
+fi
