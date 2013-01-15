@@ -1,0 +1,80 @@
+#!/bin/bash
+# Fix sums for a package file that is reported wrong by debsums.
+# In some situations changing a binary is what you want so this updates sums
+# to silence debsums.
+
+declare -r PKGINFO="/var/lib/dpkg/info"
+
+error() {
+  echo "Error: $@" >&2
+  exit 1
+}
+
+debsums_fix() {
+  local file sumsfile matches
+  file=$1
+
+  sumsfile=$(grep -Hrl "^[a-f0-9]\{32\}  ${file:1}\$" "$PKGINFO" | sort)
+  if [[ -z "$sumsfile" ]]; then
+    error "File '$1' not found in any sums files."
+  fi
+
+  matches=$(wc -l <<< "$sumsfile")
+  if [[ $matches -eq 1 ]; then
+    update_sums "$file" "$sumsfile"
+  elif [[ $matches -eq 2 ]]; then
+    fix_2sums "$sumsfile"
+  else
+    error "Multiple sums, fix manually: grep '${file:1}' '$sumsfile'"
+  fi
+}
+
+update_sums() {
+  local file sums newsum oldsum
+  file=$1
+  sums=$2
+  newsum=$(md5sum "$file" | cut -d' ' -f1)
+  oldsum=$(sed -n "s#\([0-9a-f]\{32\}\)  ${file:1}\$#\1#p" "$sums")
+
+  if [[ -z "$oldsum" ]] || [[ $(wc -l <<< "$oldsum") -ne 1 ]]; then
+    error "No sum or multiples matches, should not happen here."
+  elif [[ "$oldsum" = "$newsum" ]]; then
+    error "Sums are the same."
+  else
+    sed -i "s#$oldsum  \(.*\)#$newsum  \1#" "$sums"
+    echo "Updated $sums: $oldsum -> $newsum."
+  fi
+}
+
+fix_2sums() {
+  local sumsfile file1 file2 arch
+  sumsfile=$1
+  file1=$(basename "$(echo "$sumsfile" | head -1)")
+  file2=$(basename "$(echo "$sumsfile" | tail -1)")
+  arch=$(dpkg --print-architecture)
+  if [ "${file1%.*}" = "${file2%.*}:$arch" ]; then
+    echo "Two matches: $file1 and $file2, known arch bug, fixing file names."
+    find "$PKGINFO" -name "${file1%.*}*" -print | while read file; do
+      mv -v "$file" "${file%:$arch*}${file#*:$arch}"
+    done
+    echo "Done."
+
+  else
+    error "Two matches: $file1 and $file2, fix manually."
+  fi
+}
+
+main() {
+  if [ $# -lt 1 ]; then
+    echo "Usage: $0 <file> [<file> ...]"
+    exit 1
+  fi
+  while [[ -n "$1" ]]; do
+    debsums_fix "$1"
+    shift
+  fi
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
+fi
