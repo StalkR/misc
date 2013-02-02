@@ -1,0 +1,98 @@
+#!/bin/bash
+# OpenVPN 2.1 create cert/config package with easy-rsa 2.
+# Create client config templates: *.conf/*.ovpn
+#   - in file name, -template- is replaced with client name
+#   - in file contents, #NAME# is replaced with client name
+# Create client and send config: ./create-client name user@example.com
+
+main() {
+  if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <name> [<email>]"
+    exit 1
+  fi
+  if [[ ! -f "vars" ]]; then
+    error "vars missing - please run from easy-rsa directory"
+  fi
+  if [[ "$(echo *.conf *.ovpn)" = "*.conf *.ovpn" ]]; then
+    error "no client config template *.conf/*.ovpn found"
+  fi
+  if [[ ! -d "clients" ]]; then
+    mkdir clients || error "cannot create clients directory"
+  fi
+  # Silence "clean-all" message
+  source vars >/dev/null
+  create "$1"
+  send "$1" "$2"
+}
+
+error() {
+  echo "Error: $@" >&2
+  exit 1
+}
+
+create() {
+  if [[ -f "keys/$1.crt" ]]; then
+    echo "Certs already created for $1"
+  else
+    # build-key uses pkitool --interact
+    # interaction is annoying so just use pkitool directly
+    ./pkitool "$1" || error "pkitool failed"
+    rm -f "keys/$1.csr"
+  fi
+  package "$1"
+}
+
+package() {
+  local name tmp tmpl conf
+  # Derive VPN name from current directory (basename)
+  vpn=${PWD##*/}
+  if [[ -z "$vpn" ]]; then
+    error "cannot derive vpn name"
+  fi
+  tmp=$(mktemp -d) || error "cannot create temporary directory"
+  mkdir "$tmp/$vpn"
+  cp keys/ca.crt keys/ta.key "keys/$1.crt" "keys/$1.key" "$tmp/$vpn/" \
+    || error "copy failed"
+  rm -f "keys/$1.key"
+  for tmpl in *.conf *.ovpn; do
+    if [[ "$tmpl" == "*.conf" ]] || [[ "$tmpl" == "*.ovpn" ]]; then
+      continue
+    fi
+    conf=${tmpl/-template-/-$1-}
+    sed "s/#NAME#/$1/" "$tmpl" > "$tmp/$conf" || error "conf template failed"
+  done
+  pushd "$tmp" >/dev/null
+  tar zcf "$1.tgz" "$vpn" *.conf *.ovpn || error "archive failed"
+  popd >/dev/null
+  mv "$tmp/$1.tgz" clients/
+  rm -rf "$tmp"
+  echo "clients/$1.tgz created"
+}
+
+send() {
+  local archive to sent
+  archive="clients/$1.tgz"
+  to="$2"
+  sent=0
+  if [[ -n "$to" ]]; then
+    if gpg --list-keys "<$to>" >/dev/null; then
+      gpg -r "$to" -e "$archive" || error "gpg encrypt failed"
+      echo | mail -a "$archive.gpg" -s "vpn" "$to" || error "email failed"
+      echo "Package sent."
+      sent=1
+    else
+      echo "$to not found in gpg keyring, cannot encrypt."
+    fi
+  else
+    to="user@example.com"
+  fi
+  if [[ $sent -ne 1 ]]; then
+    echo "Encrypt: gpg -r $to -e $archive"
+    echo "Send: echo | mail -a $archive -s vpn $to"
+  fi
+  echo "When confirmed received, delete: rm -f $archive $archive.gpg"
+}
+
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+  main "$@"
+fi

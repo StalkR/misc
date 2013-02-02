@@ -1,0 +1,54 @@
+Example VPN setup for vpn.example.com
+
+= Install
+aptitude install openvpn
+Debian squeeze openvpn 2.1.
+adduser --system --home /var/run --shell /bin/false --no-create-home vpnexample
+cd /etc/openvpn
+
+= Server config
+server-udp.conf
+
+= Certificate management
+cp -r /usr/share/doc/openvpn/examples/easy-rsa/2.0 /etc/openvpn/vpnexample
+cd /etc/openvpn/vpnexample
+
+= Certificate Authority (CA)
+for k in KEY_COUNTRY KEY_PROVINCE KEY_CITY KEY_ORG KEY_EMAIL \
+  KEY_OU KEY_CN KEY_NAME; do
+  echo "export $k=''" >> vars
+done
+echo 'export KEY_SIZE=2048' >> vars
+source vars
+./clean-all
+./build-dh
+openvpn --genkey --secret keys/ta.key
+KEY_CN=vpn.example.com ./pkitool --initca
+
+= Server certificate
+./pkitool --server server
+rm -f keys/server.csr
+
+= Certificate Revocation List (CRL)
+chmod a+rx keys
+openssl ca -config "$KEY_CONFIG" -gencrl -out keys/crl.pem
+
+= Start server
+invoke-rc.d openvpn start
+
+= Client configs
+Templates:
+ - vpnexample-template-udp.conf (unix)
+ - vpnexample-template-udp.ovpn (windows)
+
+= Create a client
+./create-client user user@example.com
+Create client certificate for "user", tar+gz, gpg encrypt and email.
+
+= Revoke a client
+./revoke-full user
+No need to reload OpenVPN as it reads CRL at every connection.
+
+= Static IP addressing
+echo 'user,192.168.0.100' >> ipp.txt
+invoke-rc.d openvpn reload
