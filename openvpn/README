@@ -50,5 +50,12 @@ Create client certificate for "user", tar+gz, gpg encrypt and email.
 No need to reload OpenVPN as it reads CRL at every connection.
 
 = Static IP addressing
-echo 'user,192.168.0.100' >> ipp.txt
+echo 'user,192.168.0.6' >> ipp.txt
 invoke-rc.d openvpn reload
+Note: it's a /30, and you can only address the second host.
+Example with 192.168.0.4/30:
+ - 192.168.0.4 is netword address (unusable)
+ - 192.168.0.5 is first host, for VPN server (unusable)
+ - 192.168.0.6 is second host, for VPN client
+ - 192.168.0.7 is broadcast address (unusable)
+
