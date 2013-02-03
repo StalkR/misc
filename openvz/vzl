@@ -114,6 +114,10 @@ privvmpages,privvmpages.b,privvmpages.l,diskspace,diskspace.s,diskspace.h)
   out="ID NAME STATUS LOAD_AVERAGE PROC UNITS RAM % BAR/LIM DISK % SL/HL"
   out="$out IP(s) GATEWAY"
   while read veid status cpu name load procs vm vmb vml disk disks diskh; do
+    if [[ -z "$veid" ]]; then
+      out="$out^-"
+      continue
+    fi
     if [[ "$name" = "-" ]]; then
       name=$(ve_name $veid)
     fi
@@ -175,6 +179,10 @@ cpu_check() {
 }
 
 main() {
+  if ! [[ -x "$(command -v vzlist)" ]]; then
+    echo "Error: vzlist not available. Is vzctl installed?"
+    exit 1
+  fi
   ve_list
   hn_memory
   cpu_check
