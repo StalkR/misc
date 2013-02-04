@@ -27,7 +27,12 @@ fmt() {
       digits=$[$digits - 1]
     done
     float=$[$fact * $1 / $mult - $fact * $size]
-    printf "%i.%0i%s" $size $float $unit
+    if [[ $float -eq 0 ]]; then
+      float=""
+    else
+      float=$(printf "%0i" $float)
+    fi
+    printf "%i%s%s" $size $float $unit
   fi
 }
 
@@ -105,15 +110,21 @@ ve_gw() {
 }
 
 ve_list() {
-  local total running list out veid status cpu name load procs \
-    vm vmb vml vmp disk disks diskh diskp ips gw name cols line
+  local total running fields list out veid status cpu name load procs \
+    vm vmb vml vmp disk disks diskh diskp phys physb physl swap swapb swapl \
+    ips gw name cols line
   total=0
   running=0
-  list=$(vzlist -aHo veid,status,cpuunits,hostname,laverage,numproc,\
-privvmpages,privvmpages.b,privvmpages.l,diskspace,diskspace.s,diskspace.h)
+  fields="veid,status,cpuunits,hostname,laverage,numproc"
+  fields="$fields,privvmpages,privvmpages.b,privvmpages.l"
+  fields="$fields,diskspace,diskspace.s,diskspace.h"
+  fields="$fields,physpages,physpages.b,physpages.l"
+  fields="$fields,swappages,swappages.b,swappages.l"
+  list=$(vzlist -aHo "$fields")
   out="ID NAME STATUS LOAD_AVERAGE PROC UNITS RAM % BAR/LIM DISK % SL/HL"
   out="$out IP(s) GATEWAY"
-  while read veid status cpu name load procs vm vmb vml disk disks diskh; do
+  while read veid status cpu name load procs vm vmb vml disk disks diskh \
+    phys physb physl swap swapb swapl; do
     if [[ -z "$veid" ]]; then
       out="$out^-"
       continue
@@ -124,11 +135,20 @@ privvmpages,privvmpages.b,privvmpages.l,diskspace,diskspace.s,diskspace.h)
     name=${name%%.*}
     vmp="-"
     if [[ "$vm" != "-" ]]; then
-      vmp=$(printf "%3i%%" $[100 * $vm / $vmb])
+      if [[ ${#vmb} -lt 9 ]]; then
+        vmp=$(printf "%3i%%" $[100 * $vm / $vmb])
+      else
+        vmp=$(printf "%3i%%" $[100 * vm / $physl])
+      fi
       vm=$(fmt $[$vm * 4096])
     fi
-    vmb=$(fmt $[$vmb * 4096])
-    vml=$(fmt $[$vml * 4096])
+    if [[ ${#vmb} -lt 9 ]]; then
+      vmb=$(fmt $[$vmb * 4096])
+      vml=$(fmt $[$vml * 4096])
+    else
+      vmb=$(fmt $[$physb * 4096])
+      vml=$(fmt $[$physl * 4096])
+    fi
     diskp="-"
     if [[ "$disk" != "-" ]]; then
       diskp=$(printf "%3i%%" $[100 * $disk / $disks])
