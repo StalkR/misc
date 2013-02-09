@@ -20,7 +20,7 @@ debsums_fix() {
   fi
 
   matches=$(wc -l <<< "$sumsfile")
-  if [[ $matches -eq 1 ]; then
+  if [[ $matches -eq 1 ]]; then
     update_sums "$file" "$sumsfile"
   elif [[ $matches -eq 2 ]]; then
     fix_2sums "$sumsfile"
@@ -72,7 +72,7 @@ main() {
   while [[ -n "$1" ]]; do
     debsums_fix "$1"
     shift
-  fi
+  done
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
