@@ -16,6 +16,7 @@ main() {
 loop() {
   while sleep 60; do
     if ! alive "$2"; then
+      logger -t "$1" "restart"
       poff "$1"
       pon "$1"
     fi
