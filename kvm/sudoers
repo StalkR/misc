@@ -1,0 +1,1 @@
+%kvm    ALL=(root) NOPASSWD: /usr/sbin/tunctl, /sbin/ip, /sbin/brctl

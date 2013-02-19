@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# m h  dom mon dow   command
+@reboot ~/net-start.sh >/dev/null; ~/kvm.sh
+@reboot sleep 120; kvm-auto-restart <vm ip>

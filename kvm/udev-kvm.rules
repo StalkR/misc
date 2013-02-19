@@ -1,0 +1,3 @@
+ENV{DM_NAME}=="vg-vm_rootfs", ACTION=="add|change", GROUP="vm"
+ENV{DM_NAME}=="vg-vm_boot",   ACTION=="add|change", GROUP="vm"
+ENV{DM_NAME}=="vg-vm_swap",   ACTION=="add|change", GROUP="vm"

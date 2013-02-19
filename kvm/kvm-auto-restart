@@ -1,0 +1,45 @@
+#!/bin/bash
+# Auto restart KVM if not responding.
+
+main() {
+  if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <ip>"
+    exit 1
+  fi
+  if [[ -z "$DAEMON" ]]; then
+    DAEMON=1 nohup "$0" "$@" >/dev/null 2>&1 &
+    exit
+  fi
+  loop "$1"
+}
+
+loop() {
+  while sleep 60; do
+    if ! alive "$1"; then
+      logger -t "$USER" "restarting kvm"
+      pkill kvm
+      while pgrep kvm >/dev/null; do
+        sleep 1
+      done
+      ~/kvm.sh
+    fi
+  done
+}
+
+alive() {
+  local fail
+  for fail in {1..5}; do
+    if beat "$1"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+beat() {
+  ping -c 1 "$1" >/dev/null
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
+fi

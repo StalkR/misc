@@ -1,0 +1,7 @@
+= KVM setup
+- Create one user per kvm
+- Add to group kvm
+- LVM: boot device, other filesystems
+- sudoers for kvm to create tun/tap
+- crontab to start at boot
+- auto restart if no ping
