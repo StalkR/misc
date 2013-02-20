@@ -17,8 +17,8 @@ loop() {
   while sleep 60; do
     if ! alive "$1"; then
       logger -t "$USER" "restarting kvm"
-      pkill kvm
-      while pgrep kvm >/dev/null; do
+      pkill '^kvm$'
+      while pgrep '^kvm$' >/dev/null; do
         sleep 1
       done
       ~/kvm.sh
