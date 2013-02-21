@@ -52,9 +52,7 @@ class TestTitle(unittest.TestCase):
         self.assertEqual(['Sci-Fi'], tt.genres)
         self.assertEqual(['English'], tt.languages)
         self.assertEqual(['USA'], tt.nationalities)
-        self.assertEqual('Earth is attacked by the Kulkus, a hostile alien '
-                         'breed infected by a lethal virus and needing human '
-                         'blood to develop an antidote...', tt.description)
+        self.assertEqual('Earth is attacked by the Kulku', tt.description[:30])
         self.assertEqual(tt.id, tt.poster.title.id)
 
     def testMultipleLanguages(self):

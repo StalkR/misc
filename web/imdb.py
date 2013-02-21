@@ -122,7 +122,7 @@ class Title(object):
             return self._name
         m = re.search('Title: <strong>([^<]+)</strong>', self._page)
         if not m:
-            regexp = '<meta property="og:title" content="(.*?) \('
+            regexp = '<meta property=.og:title. content="(.*?) \('
             m = re.search(regexp, self._page)
         return Decode(m.group(1)) if m else ''
 
@@ -156,27 +156,29 @@ class Title(object):
 
     @property
     def year_production(self):
-        regexp = '(?:\(| )([0-9]{4})(?:&\w+;)*([0-9]{4})?\) - IMDb</title>'
-        m = re.search(regexp, self._page)
+        rxp = 'property=.og:title. content="[^(]+ \(.*?([0-9]{4}).*?\)" />'
+        m = re.search(rxp, self._page)
         return int(m.group(1)) if m else None
 
     @property
     def year_release(self):
-        m = re.search('itemprop="datePublished" datetime="([^-"]+)', self._page)
+        m = re.search('itemprop="datePublished" content="([^-"]+)', self._page)
         return int(m.group(1)) if m else None
 
     @property
     def type(self):
-        m = re.search('<div class="infobar">([^<]+)', self._page)
-        if m and m.group(1).strip():
-            return Decode(m.group(1)).strip(u'\r\n\xa0-')
-        regexp = '\(([^0-9]+)[0-9]{4}(?:&\w+;)*([0-9]{4})?\) - IMDb</title>'
-        m = re.search(regexp, self._page)
+        m = re.search('<div class="infobar">([^<&]+)', self._page)
+        if m:
+            s = m.group(1).strip()
+            if s:
+                return Decode(s)
+        rxp = 'property=.og:title. content="[^(]+ \((.*?) [0-9]{4}.*?\)" />'
+        m = re.search(rxp, self._page)
         return Decode(m.group(1).strip()) if m else ''
 
     @property
     def rating(self):
-        regexp = 'star-box-giga-star">([0-9.]+)'
+        regexp = 'star-box-giga-star">\s*([0-9.]+)'
         m = re.search(regexp, self._page.replace('\n', ''))
         return float(m.group(1)) if m else None
 
@@ -188,34 +190,48 @@ class Title(object):
 
     @property
     def directors(self):
-        regexp = 'href="/name/([nm0-9]+)/" +itemprop="director"[^>]*>([^<]+)'
-        matches = NoDups(re.findall(regexp, self._page))
+        regexp = '<div class="txt-block" itemprop="director"[^>]+>(.*?)</div>'
+        m = re.search(regexp, self._page, re.S)
+        if not m:
+            return []
+        regexp = '<a href="/name/(nm[0-9]+)/.*?itemprop="name">([^<]+)'
+        matches = NoDups(re.findall(regexp, m.group(1)))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
     @property
     def writers(self):
-        m = re.search('Writers:\s*</h4>(.*?)</div>', self._page, re.S)
+        regexp = '<div class="txt-block" itemprop="creator"[^>]+>(.*?)</div>'
+        m = re.search(regexp, self._page, re.S)
         if not m:
             return []
-        regexp = 'href="/name/([nm0-9]+)/".*?>([^<]+)'
+        regexp = '<a href="/name/(nm[0-9]+)/.*?itemprop="name">([^<]+)'
         matches = NoDups(re.findall(regexp, m.group(1)))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
     @property
     def actors(self):
-        regexp = 'td class="name">.*?href="/name/([nm0-9]+)/".*?>([^<]+)'
+        regexp = ('<td class="itemprop" itemprop="actor".*?'
+                  'href="/name/(nm[0-9]+)/.*?itemprop="name">([^<]+)')
         matches = NoDups(re.findall(regexp, self._page, re.S))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
     @property
     def genres(self):
-        matches = NoDups(re.findall('itemprop="genre"\s*>([^<]+)', self._page))
-        return [Decode(genre) for genre in matches]
+        regexp = '<div class="[^"]+" itemprop="genre">(.*?)</div>'
+        m = re.search(regexp, self._page, re.S)
+        if not m:
+            return []
+        matches = NoDups(re.findall('>(.*?)</a>', m.group(1)))
+        return [Decode(genre.strip()) for genre in matches]
 
     @property
     def languages(self):
-        regexp = 'itemprop="inLanguage"\s*>([^<]+)'
-        matches = NoDups(re.findall(regexp, self._page))
+        regexp = 'Language:</h4>(.*?)</div>'
+        m = re.search(regexp, self._page, re.S)
+        if not m:
+            return []
+        regexp = 'itemprop=.url.>([^<]+)</a>'
+        matches = NoDups(re.findall(regexp, m.group(1)))
         return [Decode(language) for language in matches]
 
     @property
@@ -348,7 +364,7 @@ class Media(object):
 
     @property
     def content(self):
-        return LoadUrl(self.content_url)
+        return LoadUrl(self.content_url) if self.content_url else ''
 
 
 def SearchTitle(title):
@@ -376,7 +392,7 @@ def SearchTitle(title):
     results = []
     match = re.search('<table class="findList">(.*?)</table>', page, re.S)
     if match:
-        regexp = '<a href="/title/([tt0-9]+)[^>]+>([^<]+)</a> \(([0-9]+)'
+        regexp = '<a href="/title/(tt[0-9]+)[^>]+>([^<]+)</a> \(([0-9]+)'
         for tt, name, year in re.findall(regexp, match.group(1)):
             results.append(Title(tt, name=Decode(name), year=int(year)))
     return results
