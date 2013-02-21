@@ -134,6 +134,11 @@ class TestSearch(unittest.TestCase):
         search2 = imdb.SearchTitle(u'Les Filles De L\'Oc\xe9an')
         self.assertEqual(len(search1), len(search2))
 
+    def testSearchWithOneTwo(self):
+        search = imdb.SearchTitle('Burlesque')
+        self.assertEqual('tt1126591', search[0].id)
+        self.assertEqual('tt1586713', search[1].id)
+
 
 if __name__ == '__main__':
     unittest.main()

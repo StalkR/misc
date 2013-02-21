@@ -392,7 +392,7 @@ def SearchTitle(title):
     results = []
     match = re.search('<table class="findList">(.*?)</table>', page, re.S)
     if match:
-        regexp = '<a href="/title/(tt[0-9]+)[^>]+>([^<]+)</a> \(([0-9]+)'
+        regexp = '<a href="/title/(tt[0-9]+).*?>([^<]+)</a>.*?\(([0-9]+)'
         for tt, name, year in re.findall(regexp, match.group(1)):
             results.append(Title(tt, name=Decode(name), year=int(year)))
     return results
