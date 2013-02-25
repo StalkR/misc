@@ -12,6 +12,11 @@ class TestTitle(unittest.TestCase):
     def testBadId(self):
         self.assertRaises(ValueError, imdb.Title, 'wrong')
 
+    def testRedirectId(self):
+        tt = imdb.Title('tt0437804')
+        self.assertTrue(tt._page)
+        self.assertEqual('tt0437803', tt.id)
+
     def testItalian(self):
         tt = imdb.Title('tt0073845')
         self.assertEqual(u'L\'uomo che sfid\xf2 l\'organizzazione', tt.name)
@@ -22,7 +27,7 @@ class TestTitle(unittest.TestCase):
         self.assertEqual(1975, tt.year)
         self.assertEqual(1975, tt.year_production)
         self.assertEqual(1977, tt.year_release)
-        self.assertEqual(4.3, tt.rating)
+        self.assertEqual('4.3', tt.rating)
         self.assertEqual('87m', tt.duration)
         self.assertEqual(['Sergio Grieco'], [d.name for d in tt.directors])
         self.assertEqual(['Sergio Grieco'], [w.name for w in tt.writers])
@@ -38,11 +43,11 @@ class TestTitle(unittest.TestCase):
         self.assertEqual('Alien Siege', tt.name)
         self.assertEqual([u'A F\xf6ld ostroma', u'Alien Blood', u'Alien Siege',
                           u'Etat de si\xe8ge', u'Obca krew'], tt.aka)
-        self.assertEqual('TV Movie', tt.type)
+        self.assertEqual('TV', tt.type)
         self.assertEqual(2005, tt.year)
         self.assertEqual(2005, tt.year_production)
         self.assertEqual(2005, tt.year_release)
-        self.assertEqual(3.6, tt.rating)
+        self.assertEqual('3.6', tt.rating)
         self.assertEqual('90m', tt.duration)
         self.assertEqual(['Robert Stadd'], [d.name for d in tt.directors])
         self.assertEqual(['Bill Lundy', 'Paul Salamoff'],
@@ -86,6 +91,11 @@ class TestTitle(unittest.TestCase):
         self.assertEqual(2010, tt.year)
         self.assertEqual('Video Game', tt.type)
 
+    def testPoster(self):
+        tt = imdb.Title('tt0437803')
+        self.assertEqual(tt.poster.id, 'rm3287190272')
+        self.assertTrue(tt.poster.content_url.endswith('.jpg'))
+
 
 class TestName(unittest.TestCase):
 
@@ -106,7 +116,7 @@ class TestMedia(unittest.TestCase):
     def testMedia(self):
         rm = imdb.Media('rm1064868096', imdb.Title('tt0167261'))
         self.assertEqual('tt0167261', rm.title.id)
-        self.assertEqual('.jpg', rm.content_url[-4:])
+        self.assertTrue(rm.content_url.endswith('.jpg'))
 
 
 class TestSearch(unittest.TestCase):

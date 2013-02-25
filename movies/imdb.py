@@ -67,7 +67,7 @@ class Title(object):
         year: Integer with movie year (production or release).
         production_year: Integer with production year.
         release_year: Integer with release year.
-        rating: Float with rating (between 0 and 10).
+        rating: String with rating (between 0 and 10, 1 decimal).
         duration: String with duration (e.g. 90m).
         directors: List of directors as Name objects.
         writers: List of actors as Name objects.
@@ -77,23 +77,22 @@ class Title(object):
         nationalities: List of strings with movie nationalities.
         description: String with short movie description, if available.
         poster: Poster as a Media object.
-        media: List of all Media objects.
     """
 
     def __init__(self, imdb_id, name='', year=''):
         """Create a new IMDb title object.
 
         Args:
-            imdb_id: String with IMDb title ID.
+            imdb_id: String with IMDb title ID, used if page not loaded.
             name: String with title name if known, used if page not loaded.
             year: Integer with title year if known, used if page not loaded.
         """
-        if not re.match('^tt[0-9]+$', imdb_id):
+        if not re.match('^tt\d+$', imdb_id):
             raise ValueError('Incorrect IMDb id')
-        self.id = str(imdb_id.lower())
+        self._id = str(imdb_id.lower())
         self._name = name
         self._year = year
-        self.__page = ''
+        self.__page = None
         self.__releaseinfo = ''
 
     def __repr__(self):
@@ -101,6 +100,13 @@ class Title(object):
         if self.year:
             name = '%s (%i)' % (name, self.year)
         return '<IMDb %s: %s>' % (self.id, name)
+
+    @property
+    def id(self):
+        if not self._page_loaded:
+            return self._id
+        m = re.search('http://www.imdb.com/title/(tt\d+)/', self._page)
+        return str(m.group(1)) if m else self._id
 
     @property
     def url(self):
@@ -114,7 +120,7 @@ class Title(object):
 
     @property
     def _page_loaded(self):
-        return bool(self.__page)
+        return self.__page is not None
 
     @property
     def name(self):
@@ -167,11 +173,6 @@ class Title(object):
 
     @property
     def type(self):
-        m = re.search('<div class="infobar">([^<&]+)', self._page)
-        if m:
-            s = m.group(1).strip()
-            if s:
-                return Decode(s)
         rxp = 'property=.og:title. content="[^(]+ \((.*?) [0-9]{4}.*?\)" />'
         m = re.search(rxp, self._page)
         return Decode(m.group(1).strip()) if m else ''
@@ -180,7 +181,7 @@ class Title(object):
     def rating(self):
         regexp = 'star-box-giga-star">\s*([0-9.]+)'
         m = re.search(regexp, self._page.replace('\n', ''))
-        return float(m.group(1)) if m else None
+        return m.group(1) if m else None
 
     @property
     def duration(self):
@@ -194,7 +195,7 @@ class Title(object):
         m = re.search(regexp, self._page, re.S)
         if not m:
             return []
-        regexp = '<a href="/name/(nm[0-9]+)/.*?itemprop="name">([^<]+)'
+        regexp = '<a href="/name/(nm\d+)/.*?itemprop="name">([^<]+)'
         matches = NoDups(re.findall(regexp, m.group(1)))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
@@ -204,14 +205,14 @@ class Title(object):
         m = re.search(regexp, self._page, re.S)
         if not m:
             return []
-        regexp = '<a href="/name/(nm[0-9]+)/.*?itemprop="name">([^<]+)'
+        regexp = '<a href="/name/(nm\d+)/.*?itemprop="name">([^<]+)'
         matches = NoDups(re.findall(regexp, m.group(1)))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
     @property
     def actors(self):
         regexp = ('<td class="itemprop" itemprop="actor".*?'
-                  'href="/name/(nm[0-9]+)/.*?itemprop="name">([^<]+)')
+                  'href="/name/(nm\d+)/.*?itemprop="name">([^<]+)')
         matches = NoDups(re.findall(regexp, self._page, re.S))
         return [Name(nm, name=Decode(name)) for nm, name in matches]
 
@@ -247,15 +248,11 @@ class Title(object):
 
     @property
     def poster(self):
-        regexp = 'id="img_primary">.*?href="/media/([^/]+).*?<img src="([^"]+)'
+        regexp = 'id="img_primary".* href="/media/(rm\d+).*?src="([^"]+)'
         m = re.search(regexp, self._page, re.S)
         if not m:
             return None
         return Media(m.group(1), self, content_url=m.group(2))
-
-    @property
-    def media(self):
-        raise NotImplementedError
 
 
 class Name(object):
@@ -276,11 +273,11 @@ class Name(object):
             imdb_id: String with IMDb name ID.
             name: String with full name if known, used if page not loaded.
         """
-        if not re.match('^nm[0-9]+$', imdb_id):
+        if not re.match('^nm\d+$', imdb_id):
             raise ValueError('Incorrect IMDb id')
         self.id = str(imdb_id)
         self._name = name
-        self.__page = ''
+        self.__page = None
 
     def __repr__(self):
         return '<IMDb %s: %s>' % (self.id, self.name.encode('utf-8'))
@@ -297,7 +294,7 @@ class Name(object):
 
     @property
     def _page_loaded(self):
-        return bool(self.__page)
+        return self.__page is not None
 
     @property
     def name(self):
@@ -328,12 +325,12 @@ class Media(object):
             title: Title object it belongs to.
             content_url: String with url if known, used if page not loaded.
         """
-        if not re.match('^rm[0-9]+$', imdb_id):
+        if not re.match('^rm\d+$', imdb_id):
             raise ValueError('Incorrect IMDb id')
         self.id = str(imdb_id)
         self.title = title
         self._content_url = content_url
-        self.__page = ''
+        self.__page = None
 
     def __repr__(self):
         return '<IMDb %s/%s>' % (self.id, self.title.id)
@@ -350,7 +347,7 @@ class Media(object):
 
     @property
     def _page_loaded(self):
-        return bool(self.__page)
+        return self.__page is not None
 
     @property
     def content_url(self):
@@ -385,14 +382,14 @@ def SearchTitle(title):
 
     # IMDb redirects to title page when there is only one result.
     match = re.search('<link rel="canonical" '
-                      'href="http://www.imdb.com/title/(tt[0-9]+)/"', page)
+                      'href="http://www.imdb.com/title/(tt\d+)/"', page)
     if match:
         return [Title(match.group(1))]
 
     results = []
     match = re.search('<table class="findList">(.*?)</table>', page, re.S)
     if match:
-        regexp = '<a href="/title/(tt[0-9]+).*?>([^<]+)</a>.*?\(([0-9]+)'
+        regexp = '<a href="/title/(tt\d+).*?>([^<]+)</a>.*?\((\d+)'
         for tt, name, year in re.findall(regexp, match.group(1)):
             results.append(Title(tt, name=Decode(name), year=int(year)))
     return results

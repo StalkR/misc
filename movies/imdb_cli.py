@@ -26,8 +26,8 @@ def main(argv):
     if t.duration:
         infos.append(t.duration)
     if t.rating:
-        infos.append('%.1f/10' % t.rating)
-    infos.extend([t.url, 'tg'])
+        infos.append(t.rating)
+    infos.append(t.url)
     print ' - '.join(i.encode('utf-8') for i in infos)
 
 
