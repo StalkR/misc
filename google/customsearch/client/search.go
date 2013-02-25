@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/StalkR/misc/google/customsearch"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -13,11 +12,7 @@ func main() {
 		fmt.Println("Usage: search <key> <cx> <query>")
 		os.Exit(1)
 	}
-	term := strings.TrimSpace(os.Args[3])
-	if len(term) == 0 {
-		return
-	}
-	r, err := customsearch.Search(term, os.Args[1], os.Args[2])
+	r, err := customsearch.Search(os.Args[3], os.Args[1], os.Args[2])
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
