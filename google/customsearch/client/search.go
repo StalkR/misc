@@ -1,4 +1,4 @@
-// Google Custom Search client example.
+// Google Custom Search client.
 package main
 
 import (
