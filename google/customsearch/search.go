@@ -52,13 +52,16 @@ type Item struct {
 	FormattedUrl, HtmlFormattedUrl string
 }
 
-func (i *Item) String() string {
+func compactSpaces(s string) string {
 	r, err := regexp.Compile("\\s\\s+")
 	if err != nil {
-		return fmt.Sprintf("%s - %s", i.Link, i.Snippet)
+		return s
 	}
-	snippet := r.ReplaceAll([]byte(i.Snippet), []byte(" "))
-	return fmt.Sprintf("%s - %s", i.Link, snippet)
+	return string(r.ReplaceAll([]byte(s), []byte(" ")))
+}
+
+func (i *Item) String() string {
+	return fmt.Sprintf("%s - %s", i.Link, compactSpaces(i.Snippet))
 }
 
 // Search searches a term on Google Custom Search and returns a Result.
