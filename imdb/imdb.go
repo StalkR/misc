@@ -65,7 +65,6 @@ func (t *Title) String() string {
 		infos = append(infos, t.Rating)
 	}
 	infos = append(infos, fmt.Sprintf("http://www.imdb.com/title/%s", t.Id))
-	infos = append(infos, "tg")
 	return strings.Join(infos, " - ")
 }
 
