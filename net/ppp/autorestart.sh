@@ -14,11 +14,15 @@ main() {
 }
 
 loop() {
-  while sleep 60; do
+  while sleep 10; do
     if ! alive "$2"; then
       logger -t "$1" "restart"
       poff "$1"
+      while ip link list dev "$2" >/dev/null 2>&1; do
+        sleep 1
+      done
       pon "$1"
+      sleep 10
     fi
   done
 }
@@ -34,7 +38,7 @@ alive() {
 }
 
 beat() {
-  ping -I "$1" -c 1 8.8.8.8 >/dev/null
+  ping -I "$1" -c 1 -w 1 8.8.8.8 >/dev/null
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
