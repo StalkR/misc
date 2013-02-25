@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 )
 
 type Result struct {
@@ -52,13 +53,18 @@ type Item struct {
 }
 
 func (i *Item) String() string {
-	return fmt.Sprintf("%s - %s", i.Link, i.Snippet)
+	r, err := regexp.Compile("\\s\\s+")
+	if err != nil {
+		return fmt.Sprintf("%s - %s", i.Link, i.Snippet)
+	}
+	snippet := r.ReplaceAll([]byte(i.Snippet), []byte(" "))
+	return fmt.Sprintf("%s - %s", i.Link, snippet)
 }
 
 // Search searches a term on Google Custom Search and returns a Result.
 // It requires a Google API Key (key) and a Google Custom Search ID (cx).
 func Search(term, key, cx string) (r Result, e error) {
-	base := "https: //www.googleapis.com/customsearch/v1"
+	base := "https://www.googleapis.com/customsearch/v1"
 	params := url.Values{}
 	params.Set("key", key)
 	params.Set("cx", cx)
