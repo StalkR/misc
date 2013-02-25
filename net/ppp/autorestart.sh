@@ -22,7 +22,7 @@ loop() {
         sleep 1
       done
       pon "$1"
-      sleep 10
+      sleep 60
     fi
   done
 }
