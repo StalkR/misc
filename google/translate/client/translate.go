@@ -20,10 +20,9 @@ func Supported(target, key string) {
 	}
 	if target == "" {
 		fmt.Println("Supported languages:", strings.Join(langs, ", "))
-	} else {
-		fmt.Printf("Supported languages for %s: %s\n", target,
-			strings.Join(langs, ", "))
 	}
+	fmt.Printf("Supported languages for %s: %s\n", target,
+		strings.Join(langs, ", "))
 }
 
 func Translate(source, target, text, key string) {
