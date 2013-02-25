@@ -1,3 +1,4 @@
+// Package imdb implements Title find and information using AppEngine JSON API.
 package imdb
 
 import (
