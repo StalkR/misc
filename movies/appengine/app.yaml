@@ -15,6 +15,15 @@ handlers:
 - url: /title/tt\d+
   script: title.app
 
+- url: /tests
+  script: tests.app
+  login: admin
+  secure: always
+
+builtins:
+- appstats: on
+- remote_api: on
+
 skip_files:
 - ^(.*/)?app\.yaml
 - ^(.*/)?app\.yml
@@ -25,9 +34,4 @@ skip_files:
 - ^(.*/)?.*\.py[co]
 - ^(.*/)?.*/RCS/.*
 - ^(.*/)?\..*
-- ^(.*/)?.*_test\.py$
 - ^(.*/)?.*\.sh$
-
-builtins:
-- appstats: on
-- remote_api: on
