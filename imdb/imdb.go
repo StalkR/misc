@@ -34,7 +34,11 @@ func (t *Title) String() string {
 	}
 	infos = append(infos, name)
 	if len(t.Genres) > 0 {
-		infos = append(infos, strings.Join(t.Genres[:3], ", "))
+		max := len(t.Genres)
+		if max > 3 {
+			max = 3
+		}
+		infos = append(infos, strings.Join(t.Genres[:max], ", "))
 	}
 	if len(t.Directors) > 0 {
 		max := len(t.Directors)
