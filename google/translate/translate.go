@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -88,5 +89,7 @@ func Translate(source, target, text, key string) (t Translation, e error) {
 	if len(r.Data.Translations) == 0 {
 		return t, errors.New("no translation")
 	}
-	return r.Data.Translations[0], nil
+	t = r.Data.Translations[0]
+	t.TranslatedText = html.UnescapeString(t.TranslatedText)
+	return t, nil
 }
