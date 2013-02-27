@@ -18,6 +18,6 @@ func main() {
 		os.Exit(1)
 	}
 	for i, item := range r.Items {
-		fmt.Printf("%2d. %s\n", i, item.String())
+		fmt.Printf("%2d. %s\n", i+1, item.String())
 	}
 }
