@@ -84,11 +84,14 @@ func NewTitle(id string) (t Title, e error) {
 		return t, err
 	}
 	defer resp.Body.Close()
-	contents, err := ioutil.ReadAll(resp.Body)
+	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return t, err
 	}
-	err = json.Unmarshal(contents, &t)
+	// Go < 1.1 do not accept mismatched null so we replace manually.
+	// See https://code.google.com/p/go/issues/detail?id=2540
+	d := []byte(strings.Replace(string(c), "\": null", "\": \"\"", -1))
+	err = json.Unmarshal(d, &t)
 	if err != nil {
 		return t, err
 	}
@@ -106,11 +109,14 @@ func FindTitle(q string) (r []Result, e error) {
 		return r, err
 	}
 	defer resp.Body.Close()
-	contents, err := ioutil.ReadAll(resp.Body)
+	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return r, err
 	}
-	err = json.Unmarshal(contents, &r)
+	// Go < 1.1 do not accept mismatched null so we replace manually.
+	// See https://code.google.com/p/go/issues/detail?id=2540
+	d := []byte(strings.Replace(string(c), "\": null", "\": \"\"", -1))
+	err = json.Unmarshal(d, &r)
 	if err != nil {
 		return r, err
 	}
