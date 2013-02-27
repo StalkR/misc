@@ -88,11 +88,10 @@ func NewTitle(id string) (t Title, e error) {
 	if err != nil {
 		return t, err
 	}
-	// Go < 1.1 do not accept mismatched null so we replace manually.
+	err = json.Unmarshal(c, &t)
+	// Go < 1.1 do not accept mismatched null so just skip this error.
 	// See https://code.google.com/p/go/issues/detail?id=2540
-	d := []byte(strings.Replace(string(c), "\": null", "\": \"\"", -1))
-	err = json.Unmarshal(d, &t)
-	if err != nil {
+	if err != nil && !strings.Contains(fmt.Sprintf("%s", err), "cannot unmarshal null") {
 		return t, err
 	}
 	return t, nil
@@ -113,11 +112,10 @@ func FindTitle(q string) (r []Result, e error) {
 	if err != nil {
 		return r, err
 	}
-	// Go < 1.1 do not accept mismatched null so we replace manually.
+	err = json.Unmarshal(c, &r)
+	// Go < 1.1 do not accept mismatched null so just skip this error.
 	// See https://code.google.com/p/go/issues/detail?id=2540
-	d := []byte(strings.Replace(string(c), "\": null", "\": \"\"", -1))
-	err = json.Unmarshal(d, &r)
-	if err != nil {
+	if err != nil && !strings.Contains(fmt.Sprintf("%s", err), "cannot unmarshal null") {
 		return r, err
 	}
 	return r, nil

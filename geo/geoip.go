@@ -65,11 +65,10 @@ func IPLocation(ip string) (g GeoIP, e error) {
 	if err != nil {
 		return g, err
 	}
-	// Go < 1.1 do not accept mismatched null so we replace manually.
+	err = json.Unmarshal(c, &g)
+	// Go < 1.1 do not accept mismatched null so just skip this error.
 	// See https://code.google.com/p/go/issues/detail?id=2540
-	r := []byte(strings.Replace(string(c), "\":null", "\":\"\"", -1))
-	err = json.Unmarshal(r, &g)
-	if err != nil {
+	if err != nil && !strings.Contains(fmt.Sprintf("%s", err), "cannot unmarshal null") {
 		return g, err
 	}
 	return g, nil
