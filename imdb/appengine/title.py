@@ -103,7 +103,7 @@ class Handler(webapp2.RequestHandler):
             elif t.id != tid:
                 reply = t.id
             else:
-                reply = json.dumps(t.__dict__)
+                reply = json.dumps(t.__dict__, indent=2)
             memcache.add(tid, reply)
         if reply == '404':
             self.abort(404)

@@ -12,7 +12,7 @@ def Title(q):
     results = []
     for t in titles:
         results.append({'id': t.id, 'name': t.name, 'year': t.year})
-    return json.dumps(results)
+    return json.dumps(results, indent=2)
 
 
 class Handler(webapp2.RequestHandler):

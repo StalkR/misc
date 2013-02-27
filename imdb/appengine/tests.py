@@ -19,8 +19,8 @@ def Mail(details):
 
 
 def Run(modules):
-    outputs = []
     success = True
+    outputs = []
     for module in modules:
         stream = StringIO.StringIO()
         stream.write('Testing: %s\n' % module.__name__)
