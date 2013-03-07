@@ -20,9 +20,9 @@ run_tests() {
     return 1
   fi
   echo -n "DNS OK - "
-  ip=$(curl -4s ifconfig.me)
+  ip=$(curl -4s ifconfig.me/ip)
   if [[ -z "$ip" ]]; then
-    echo "Web failed: curl -4 ifconfig.me"
+    echo "Web failed: curl -4 ifconfig.me/ip"
     return 2
   fi
   echo -n "Web OK - "
