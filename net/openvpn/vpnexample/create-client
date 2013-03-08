@@ -51,6 +51,7 @@ package() {
   fi
   tmp=$(mktemp -d) || error "cannot create temporary directory"
   mkdir "$tmp/$vpn"
+  chmod go-rwx "$tmp/$vpn"
   cp keys/ca.crt keys/ta.key "keys/$1.crt" "keys/$1.key" "$tmp/$vpn/" \
     || error "copy failed"
   rm -f "keys/$1.key"
