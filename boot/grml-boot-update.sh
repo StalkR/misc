@@ -13,8 +13,6 @@
 # 3) create a directory for /machine, copy this script and run it from there
 # 4) add as many machines as needed: add include, create directory, copy script
 
-place this script in /machine and run it
-
 main() {
   cd "$(dirname "${BASH_SOURCE[0]}")"
   check
@@ -42,7 +40,6 @@ copy() {
   local file
   rsync -a /boot/{config,initrd.img,System.map,vmlinuz}-* .
   for file in {config,initrd.img,System.map,vmlinuz}-*; do
-    file=${file##*/}
     if [[ ! -f "/boot/$file" ]]; then
       rm -vf "$file"
     fi
