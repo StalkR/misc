@@ -8,9 +8,9 @@ kvm \
   -drive file=/dev/vg/vm_rootfs,cache=none,if=virtio \
   -drive file=/dev/vg/vm_swap,cache=none,if=virtio \
   -net nic,model=virtio,macaddr=52:54:aa:bb:cc:00 \
-  -net tap,ifname=tc2.0,script=no \
+  -net tap,ifname=vm.0,script=no \
   -net nic,model=virtio,macaddr=52:54:aa:bb:cc:10 \
-  -net tap,ifname=tc2.1,script=no \
+  -net tap,ifname=vm.1,script=no \
   -monitor unix:monitor,server,nowait \
   -serial unix:serial,server,nowait \
   -vnc unix:vnc \
