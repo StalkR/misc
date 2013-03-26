@@ -26,6 +26,6 @@ main() {
   done < <(ssh "$@" "> $FILE; tail -F $FILE")
 }
 
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
   main "$@"
 fi

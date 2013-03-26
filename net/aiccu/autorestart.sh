@@ -37,6 +37,6 @@ beat() {
   ping6 -c 1 -w 1 ipv6.google.com >/dev/null
 }
 
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
   main "$@"
 fi

@@ -41,6 +41,6 @@ beat() {
   ping -I "$1" -c 1 -w 1 8.8.8.8 >/dev/null
 }
 
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
   main "$@"
 fi

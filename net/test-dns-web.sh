@@ -34,6 +34,6 @@ run_tests() {
   echo " ($rev)"
 }
 
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
   main "$@"
 fi
