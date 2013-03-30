@@ -12,42 +12,67 @@ import (
 )
 
 type GeoIP struct {
-	Latitude, Longitude                       float64
-	Continent_code, Country_code, Region_code string
-	Area_code, Metro_code, Postal_code        string
-	Continent_name, Country_name, Region_name string
-	Time_zone, City                           string
-	Organization, Isp, Net_speed              string
-	Ip_address, Domain, As_number             string
+	Continent GeoContinent
+	Country   GeoCountry
+	Location  GeoLocation
+	Traits    GeoTraits
+}
+
+type GeoContinent struct {
+	Continent_code string
+	Geoname_id     int
+	Name           ContinentName
+}
+
+type ContinentName struct {
+	En string
+}
+
+type GeoCountry struct {
+	Geoname_id         int
+	Iso_3166_1_alpha_2 string
+	Iso_3166_1_alpha_3 string
+	Name               CountryName
+}
+
+type CountryName struct {
+	En string
+}
+
+type GeoLocation struct {
+	Latitude, Longitude float64
+	Time_zone           string
+}
+
+type GeoTraits struct {
+	Autonomous_system_number       string
+	Autonomous_system_organization string
+	Domain, Ip_address             string
+	Is_anonymous_proxy             string
+	Isp, Organization              string
 }
 
 func (g *GeoIP) String() string {
 	var values []string
-	values = append(values, fmt.Sprintf("Latitude: %f", g.Latitude))
-	values = append(values, fmt.Sprintf("Longitude: %f", g.Longitude))
-	if g.Country_name != "" {
-		values = append(values, fmt.Sprintf("Country: %s", g.Country_name))
+	values = append(values, fmt.Sprintf("Latitude: %f", g.Location.Latitude))
+	values = append(values, fmt.Sprintf("Longitude: %f", g.Location.Longitude))
+	if g.Country.Name.En != "" {
+		values = append(values, fmt.Sprintf("Country: %s", g.Country.Name.En))
 	}
-	if g.Region_name != "" {
-		values = append(values, fmt.Sprintf("Region: %s", g.Region_name))
+	if g.Traits.Organization != "" {
+		values = append(values, fmt.Sprintf("Org: %s", g.Traits.Organization))
 	}
-	if g.City != "" {
-		values = append(values, fmt.Sprintf("City: %s", g.City))
+	if g.Traits.Isp != "" {
+		values = append(values, fmt.Sprintf("ISP: %s", g.Traits.Isp))
 	}
-	if g.Organization != "" {
-		values = append(values, fmt.Sprintf("Org: %s", g.Organization))
+	if g.Traits.Autonomous_system_number != "" {
+		values = append(values, fmt.Sprintf("AS: %s", g.Traits.Autonomous_system_number))
 	}
-	if g.Isp != "" {
-		values = append(values, fmt.Sprintf("ISP: %s", g.Isp))
+	if g.Traits.Ip_address != "" {
+		values = append(values, fmt.Sprintf("IP: %s", g.Traits.Ip_address))
 	}
-	if g.Ip_address != "" {
-		values = append(values, fmt.Sprintf("IP: %s", g.Ip_address))
-	}
-	if g.Domain != "" {
-		values = append(values, fmt.Sprintf("DNS: %s", g.Domain))
-	}
-	if g.As_number != "" {
-		values = append(values, fmt.Sprintf("AS: %s", g.As_number))
+	if g.Traits.Domain != "" {
+		values = append(values, fmt.Sprintf("Domain: %s", g.Traits.Domain))
 	}
 	return strings.Join(values, ", ")
 }
