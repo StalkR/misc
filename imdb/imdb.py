@@ -354,7 +354,8 @@ class Media(object):
         if not self._page_loaded and self._content_url:
             url = self._content_url
         else:
-            m = re.search('<img id="primary-img".*?src="([^"]+)', self._page)
+            regexp = '<img id="primary-img".*?src="([^"]+)'
+            m = re.search(regexp, self._page, re.S)
             url = m.group(1) if m else ''
         # Remove everything after @@ except extension for full image version.
         return re.sub('@@.*?\.jpg', '@@.jpg', url)
