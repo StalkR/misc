@@ -3,8 +3,10 @@ package imdb
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -76,23 +78,48 @@ func (n *Name) String() string {
 	return n.Name
 }
 
+// Get performs an HTTP get with retries.
+func GetRetry(url string, retries int) (resp *http.Response, err error) {
+	for i := 0; i < retries; i++ {
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode == 200 {
+			return resp, nil
+		}
+		log.Print("imdb: get error, status ", resp.StatusCode)
+	}
+	return nil, errors.New(fmt.Sprintf("imdb: get error, status: %i", resp.StatusCode))
+}
+
+// Decode decodes json data from app.
+func Decode(data []byte, v interface{}) error {
+	err := json.Unmarshal(data, v)
+	// Go < 1.1 do not accept mismatched null so just skip this error.
+	// See https://code.google.com/p/go/issues/detail?id=2540
+	if err != nil && !strings.Contains(fmt.Sprintf("%s", err), "cannot unmarshal null") {
+		log.Print("imdb: decode error: ", fmt.Sprintf("%v", string(data)))
+		return err
+	}
+	return nil
+}
+
 // NewTitle obtains a Title ID with its information and returns a Title.
-func NewTitle(id string) (t Title, e error) {
+func NewTitle(id string) (t *Title, e error) {
 	base := "http://movie-db-api.appspot.com/title"
-	resp, err := http.Get(fmt.Sprintf("%s/%s", base, id))
+	resp, err := GetRetry(fmt.Sprintf("%s/%s", base, id), 3)
 	if err != nil {
-		return t, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return t, err
+		return nil, err
 	}
-	err = json.Unmarshal(c, &t)
-	// Go < 1.1 do not accept mismatched null so just skip this error.
-	// See https://code.google.com/p/go/issues/detail?id=2540
-	if err != nil && !strings.Contains(fmt.Sprintf("%s", err), "cannot unmarshal null") {
-		return t, err
+	t = &Title{}
+	if err = Decode(c, t); err != nil {
+		return nil, err
 	}
 	return t, nil
 }
@@ -103,20 +130,18 @@ func FindTitle(q string) (r []Result, e error) {
 	params := url.Values{}
 	params.Set("s", "tt")
 	params.Set("q", q)
-	resp, err := http.Get(fmt.Sprintf("%s?%s", base, params.Encode()))
+	resp, err := GetRetry(fmt.Sprintf("%s?%s", base, params.Encode()), 3)
 	if err != nil {
-		return r, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return r, err
+		return nil, err
 	}
-	err = json.Unmarshal(c, &r)
-	// Go < 1.1 do not accept mismatched null so just skip this error.
-	// See https://code.google.com/p/go/issues/detail?id=2540
-	if err != nil && !strings.Contains(fmt.Sprintf("%s", err), "cannot unmarshal null") {
-		return r, err
+	r = make([]Result, 0)
+	if err = Decode(c, &r); err != nil {
+		return nil, err
 	}
 	return r, nil
 }
