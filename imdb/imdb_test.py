@@ -148,7 +148,7 @@ class TestSearch(unittest.TestCase):
     def testSearchWithOneTwo(self):
         search = imdb.SearchTitle('Burlesque')
         self.assertEqual('tt1126591', search[0].id)
-        self.assertEqual('tt1586713', search[1].id)
+        self.assertEqual('tt0040962', search[1].id)
 
 
 if __name__ == '__main__':
