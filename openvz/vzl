@@ -1,7 +1,7 @@
 #!/bin/bash
-# List OpenVZ containers nicely (extends vzlist).
+# List OpenVZ containers nicely by extending vzlist.
 
-# Obtain formatted size of an integer.
+# Format number with suffix (k/M/G) and minimum 2 significant digits.
 # Usage: fmt <integer>
 fmt() {
   local mult unit size digits float
@@ -18,45 +18,12 @@ fmt() {
   else
     digits=0
   fi
-  if [[ $digits -eq 0 ]]; then
+  float=$[10 * $1 / $mult - 10 * $size]
+  if [[ $digits -eq 0 ]] || [[ $float -eq 0 ]]; then
     printf "%i%s" $size $unit
   else
-    fact=1
-    while [[ $digits -ne 0 ]]; do
-      fact=$[$fact * 10]
-      digits=$[$digits - 1]
-    done
-    float=$[$fact * $1 / $mult - $fact * $size]
-    if [[ $float -eq 0 ]]; then
-      float=""
-    else
-      float=$(printf "%0i" $float)
-    fi
-    printf "%i%s%s" $size $float $unit
+    printf "%i.%0i%s" $size $float $unit
   fi
-}
-
-ve_name() {
-  if [[ $1 -eq 0 ]]; then
-    hostname -s
-    return
-  fi
-  local file f1 f2
-  file="/etc/vz/conf/$1.conf"
-  if [[ -f "$file" ]]; then
-    while read f1 f2; do
-      if [[ "${f1:0:9}" = "HOSTNAME=" ]]; then
-        echo "${f1:9}"
-        return
-      fi
-    done < "$file"
-  fi
-  file="/var/lib/vz/private/$1/etc/hostname"
-  if [[ -f "$file" ]]; then
-    cat "$file"
-    return
-  fi
-  echo "-"
 }
 
 ve_ips() {
@@ -110,45 +77,33 @@ ve_gw() {
 }
 
 ve_list() {
-  local total running fields list out veid status cpu name load procs \
-    vm vmb vml vmp disk disks diskh diskp phys physb physl swap swapb swapl \
-    ips gw name cols line
+  local total running list out veid status cpu name load procs \
+    vm vmb vml vmp disk disks diskh diskp ips gw name cols line
   total=0
   running=0
-  fields="veid,status,cpuunits,hostname,laverage,numproc"
-  fields="$fields,privvmpages,privvmpages.b,privvmpages.l"
-  fields="$fields,diskspace,diskspace.s,diskspace.h"
-  fields="$fields,physpages,physpages.b,physpages.l"
-  fields="$fields,swappages,swappages.b,swappages.l"
-  list=$(vzlist -aHo "$fields")
-  out="ID NAME STATUS LOAD_AVERAGE PROC UNITS RAM % BAR/LIM DISK % SL/HL"
+  list=$(vzlist -aHo veid,status,cpuunits,hostname,laverage,numproc,\
+physpages,physpages.l,swappages,swappages.l,diskspace,diskspace.s,diskspace.h)
+  out="ID NAME STATUS LOAD_AVERAGE PROC UNITS RAM % SWAP % DISK % SL/HL"
   out="$out IP(s) GATEWAY"
-  while read veid status cpu name load procs vm vmb vml disk disks diskh \
-    phys physb physl swap swapb swapl; do
+  while read veid status cpu name load procs ram raml swap swapl disk disks \
+    diskh; do
     if [[ -z "$veid" ]]; then
       out="$out^-"
       continue
     fi
-    if [[ "$name" = "-" ]]; then
-      name=$(ve_name $veid)
-    fi
     name=${name%%.*}
-    vmp="-"
-    if [[ "$vm" != "-" ]]; then
-      if [[ ${#vmb} -lt 9 ]]; then
-        vmp=$(printf "%3i%%" $[100 * $vm / $vmb])
-      else
-        vmp=$(printf "%3i%%" $[100 * vm / $physl])
-      fi
-      vm=$(fmt $[$vm * 4096])
+    ramp="-"
+    if [[ "$ram" != "-" ]]; then
+      ramp=$(printf "%3i%%" $[100 * $ram / $raml])
+      ram=$(fmt $[$ram * 4096])
     fi
-    if [[ ${#vmb} -lt 9 ]]; then
-      vmb=$(fmt $[$vmb * 4096])
-      vml=$(fmt $[$vml * 4096])
-    else
-      vmb=$(fmt $[$physb * 4096])
-      vml=$(fmt $[$physl * 4096])
+    raml=$(fmt $[$raml * 4096])
+    swapp="-"
+    if [[ "$swap" != "-" ]]; then
+      swapp=$(printf "%3i%%" $[100 * $swap / $swapl])
+      swap=$(fmt $[$swap * 4096])
     fi
+    swapl=$(fmt $[$swapl * 4096])
     diskp="-"
     if [[ "$disk" != "-" ]]; then
       diskp=$(printf "%3i%%" $[100 * $disk / $disks])
@@ -158,8 +113,8 @@ ve_list() {
     diskh=$(fmt $[$diskh * 1024])
     ips=$(ve_ips $veid)
     gw=$(ve_gw $veid)
-    out="$out^$veid $name $status $load $procs $cpu $vm $vmp $vmb:$vml"
-    out="$out $disk $diskp $disks:$diskh $ips $gw"
+    out="$out^$veid $name $status $load $procs $cpu $ram/$raml $ramp"
+    out="$out $swap/$swapl $swapp $disk $diskp $disks:$diskh $ips $gw"
     total=$[$total + 1]
     if [[ "$status" = "running" ]]; then
       running=$[$running + 1]
@@ -208,6 +163,6 @@ main() {
   cpu_check
 }
 
-if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   main "$@"
 fi
