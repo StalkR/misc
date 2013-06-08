@@ -22,6 +22,7 @@ class TestTitle(unittest.TestCase):
         self.assertEqual(u'L\'uomo che sfid\xf2 l\'organizzazione', tt.name)
         self.assertEqual([u'Antimetopos me tin mafia',
                           u'El hombre que desafi\xf3 a la organizaci\xf3n',
+                          u'L\'uomo che sfid\xf2 l\'organizzazione',
                           u'One Man Against the Organization'], tt.aka)
         self.assertEqual('', tt.type)
         self.assertEqual(1975, tt.year)
@@ -41,7 +42,7 @@ class TestTitle(unittest.TestCase):
     def testTv(self):
         tt = imdb.Title('tt0437803')
         self.assertEqual('Alien Siege', tt.name)
-        self.assertEqual([u'A F\xf6ld ostroma', u'Alien Blood', u'Alien Siege',
+        self.assertEqual([u'Alien Siege', u'A F\xf6ld ostroma', u'Alien Blood',
                           u'Etat de si\xe8ge', u'O Perigo Alien\xedgena',
                           u'Obca krew'], tt.aka)
         self.assertEqual('TV', tt.type)
@@ -76,7 +77,7 @@ class TestTitle(unittest.TestCase):
     def testEmptyAka(self):
         tt = imdb.Title('tt0291830')
         self.assertEqual(u'Corps \xe0 coeur', tt.name)
-        self.assertEqual([], tt.aka)
+        self.assertEqual([u'Corps \xe0 coeur'], tt.aka)
 
     def testYearWithHtmlOrSerie(self):
         tt = imdb.Title('tt1965639')
@@ -148,7 +149,7 @@ class TestSearch(unittest.TestCase):
     def testSearchWithOneTwo(self):
         search = imdb.SearchTitle('Burlesque')
         self.assertEqual('tt1126591', search[0].id)
-        self.assertEqual('tt0040962', search[1].id)
+        self.assertEqual('tt1586713', search[1].id)
 
 
 if __name__ == '__main__':

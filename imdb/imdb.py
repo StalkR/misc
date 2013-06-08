@@ -141,14 +141,12 @@ class Title(object):
 
     @property
     def aka(self):
-        if 'Also Known As:</h4>' not in self._page:
-            return []
-        regexp = 'Also Known As \(AKA\)(.*?)</table>'
+        regexp = '<table id="akas"(.*?)</table>'
         m = re.search(regexp, self._releaseinfo, re.S)
         if not m:
             return []
         names = []
-        for name in re.findall('<tr>\s*<td>([^<]+)', m.group(1)):
+        for name in re.findall('<tr[^>]*>\s*<td>([^<]+)', m.group(1)):
             names.append(Decode(name.strip()))
         return names
 
