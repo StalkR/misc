@@ -148,7 +148,7 @@ class Title(object):
         names = []
         for name in re.findall('<tr[^>]*>\s*<td>([^<]+)', m.group(1)):
             names.append(Decode(name.strip()))
-        return names
+        return sorted(names)
 
     @property
     def year(self):
