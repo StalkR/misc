@@ -1,0 +1,35 @@
+# To put in your bashrc
+
+# Save agent socket for screen and load it when in screen
+case "$TERM" in
+  screen*) export SSH_AUTH_SOCK=~/.ssh-agent ;;
+  *) [[ -e "$SSH_AUTH_SOCK" ]] && [[ "$SSH_AUTH_SOCK" != ~/.ssh-agent ]] && \
+     ln -snf "$SSH_AUTH_SOCK" ~/.ssh-agent ;;
+esac
+# When reattaching from non-interactive ssh, we need a manual fix
+link_ssh_agent() {
+  local dir sock
+  dir=$(find /tmp -type d -name 'ssh-*' 2>/dev/null | head -1)
+  sock=$(find "$dir" -type s -name 'agent.*' 2>/dev/null)
+  if [[ -r "$sock" ]]; then
+    ln -snf "$sock" ~/.ssh-agent
+    echo "Agent linked: $sock"
+    ssh-add -l
+  else
+    echo "Error: cannot find running ssh-agent in /tmp"
+  fi
+}
+
+
+# Especially useful with cygwin, linux distros usually start
+# ssh-agent and propagate it to your shell
+
+# start ssh-agent if not started, else link to it
+if ! ps ax 2>/dev/null | grep -q ssh-agent; then
+  # make sure no dead ssh agent sockets remain
+  rm -rf /tmp/ssh-*
+  eval $(ssh-agent) > /dev/null
+else
+  export SSH_AUTH_SOCK=~/.ssh-agent
+  link_ssh_agent > /dev/null
+fi
