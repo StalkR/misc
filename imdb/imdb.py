@@ -146,7 +146,7 @@ class Title(object):
         if not m:
             return []
         names = []
-        for name in re.findall('<tr[^>]*>\s*<td>([^<]+)', m.group(1)):
+        for name in re.findall('<td>([^<]+)</td>\s*</tr>', m.group(1)):
             names.append(Decode(name.strip()))
         return sorted(names)
 
