@@ -3,22 +3,21 @@
 
 main() {
   local ups timer host to
-  ups=${1%%_*}
-  timer=${1#*_}
-  host=$(hostname)
+  ups=$UPSNAME
+  host=$(hostname -s)
   to=root
 
-  case "$timer" in
+  case "$1" in
     "fsd")
       date | mail -s "[$ups@$host] Forced shutdown" $to
-      shutdown ;;
+      do_shutdown ;;
     "onbatt")
       date | mail -s "[$ups@$host] Power lost, running on battery" $to
       touch /var/run/nut/onbatt ;;
     "onbatt-toolong")
       date | mail -s "[$ups@$host] Too long on battery, forcing shutdown" $to
       touch /var/run/nut/onbatt-toolong
-      shutdown ;;
+      do_shutdown ;;
     "online")
       date | mail -s "[$ups@$host] Power is back" $to
       rm -f /var/run/nut/onbatt /var/run/nut/onbatt-toolong ;;
@@ -27,7 +26,7 @@ main() {
     "commok")
       date | mail -s "[$ups@$host] Communications OK" $to ;;
     "commbad")
-      date  | mail -s "[$ups@$host] Communications lost" $to ;;
+      date | mail -s "[$ups@$host] Communications lost" $to ;;
     "shutdown")
       date | mail -s "[$ups@$host] System being shutdown" $to ;;
     "replbatt")
@@ -41,9 +40,9 @@ main() {
   esac
 }
 
-shutdown() {
+do_shutdown() {
   ssh -i /etc/nut/shutdown.key root@othermachine halt
-  /sbin/upsmon -c fsd
+  upsmon -c fsd
 }
 
 if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
