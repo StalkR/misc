@@ -22,6 +22,7 @@ class TestTitle(unittest.TestCase):
         self.assertEqual(u'L\'uomo che sfid\xf2 l\'organizzazione', tt.name)
         self.assertEqual([u'Antimetopos me tin mafia',
                           u'El hombre que desafi\xf3 a la organizaci\xf3n',
+                          u"L'homme qui d\xe9fia l'organisation",
                           u'One Man Against the Organization'], tt.aka)
         self.assertEqual('', tt.type)
         self.assertEqual(1975, tt.year)
