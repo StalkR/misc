@@ -76,6 +76,21 @@ ve_gw() {
   echo "-"
 }
 
+ve_hostname() {
+  local prefix file hostname
+  prefix=
+  if [[ $1 -ne 0 ]]; then
+    prefix="/var/lib/vz/private/$1"
+  fi
+  file="$prefix/etc/hostname"
+  if [[ ! -f "$file" ]]; then
+    echo "-"
+    return
+  fi
+  read hostname < "$file"
+  echo "$hostname"
+}
+
 ve_list() {
   local total running list out veid status cpu name load procs \
     vm vmb vml vmp disk disks diskh diskp ips gw name cols line
@@ -92,6 +107,9 @@ physpages,physpages.l,swappages,swappages.l,diskspace,diskspace.s,diskspace.h)
       continue
     fi
     name=${name%%.*}
+    if [[ "$name" == "-" ]]; then
+      name=$(ve_hostname $veid)
+    fi
     ramp="-"
     if [[ "$ram" != "-" ]]; then
       ramp=$(printf "%3i%%" $[100 * $ram / $raml])
