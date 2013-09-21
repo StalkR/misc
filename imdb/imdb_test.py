@@ -43,6 +43,7 @@ class TestTitle(unittest.TestCase):
         tt = imdb.Title('tt0437803')
         self.assertEqual('Alien Siege', tt.name)
         self.assertEqual([u'A F\xf6ld ostroma', u'Alien Blood',
+                          u'Alien Siege - Tod aus dem All',
                           u'Etat de si\xe8ge', u'O Perigo Alien\xedgena',
                           u'Obca krew'], tt.aka)
         self.assertEqual('TV Movie', tt.type)

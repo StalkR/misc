@@ -298,7 +298,7 @@ class Name(object):
     def name(self):
         if not self._page_loaded and self._name:
             return self._name
-        m = re.search('class="header" itemprop="name">([^<]+)', self._page)
+        m = re.search('<meta property=.og:title. content="(.*?)"', self._page)
         return Decode(m.group(1).strip()) if m else ''
 
 
