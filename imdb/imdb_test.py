@@ -31,7 +31,8 @@ class TestTitle(unittest.TestCase):
         self.assertEqual('5.4', tt.rating)
         self.assertEqual('87m', tt.duration)
         self.assertEqual(['Sergio Grieco'], [d.name for d in tt.directors])
-        self.assertEqual(['Sergio Grieco'], [w.name for w in tt.writers])
+        self.assertEqual(['Sergio Grieco', 'Rafael Romero Marchent'],
+                         [w.name for w in tt.writers])
         self.assertEqual(11, len(tt.actors))
         self.assertEqual(u'Alberto Dalb\xe9s', tt.actors[4].name)
         self.assertEqual(['Crime', 'Drama'], tt.genres)
