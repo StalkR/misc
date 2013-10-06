@@ -2,12 +2,13 @@ Example VPN setup for vpn.example.com
 
 = Install
 aptitude install openvpn
-Debian squeeze openvpn 2.1.
+Debian wheezy openvpn 2.2.
 adduser --system --home /var/run --shell /bin/false --no-create-home vpnexample
 cd /etc/openvpn
 
 = Server config
-server-udp.conf
+server-udp.conf for IPv4
+server-udp6.conf for both IPv4 and IPv6 (see notes below)
 
 = Certificate management
 cp -r /usr/share/doc/openvpn/examples/easy-rsa/2.0 /etc/openvpn/vpnexample
@@ -59,3 +60,23 @@ Example with 192.168.0.4/30:
  - 192.168.0.6 is second host, for VPN client
  - 192.168.0.7 is broadcast address (unusable)
 
+= IPv6
+== Server
+OpenVPN 2.2 only supports <= /64, if need bigger (e.g. /96) install 2.3 (e.g.
+download openvpn sources from debian/sid and build locally).
+Warning: ipp (ifconfig-pool-persist) not supported for IPv6 yet (TODO)
+         so look at which IP is given to client.
+
+Then use NDP proxy to announce router to clients:
+  ip neigh add proxy <router IPv6> dev tunX
+And to announce client to router:
+  ip neigh add proxy <client IPv6> dev eth0
+
+== Clients
+Add to config:
+  script-security 2
+  up ./ipv6-up
+With ipv6-up:
+  #!/bin/bash
+  ip route add <IPv6 router>/128 dev $dev
+  ip route add default via <IPv6 router>
