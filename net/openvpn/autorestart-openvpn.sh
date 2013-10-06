@@ -18,7 +18,8 @@ loop() {
     if ! alive "$1" "$2"; then
       logger -t "openvpn" "restart"
       invoke-rc.d openvpn stop
-      while ip link list dev "$1" >/dev/null 2>&1; do
+      while ip link list dev "$1" >/dev/null 2>&1 || \
+        pgrep openvpn >/dev/null; do
         sleep 1
       done
       invoke-rc.d openvpn start

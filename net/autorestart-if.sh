@@ -18,6 +18,7 @@ loop() {
     if ! alive "$1" "$2"; then
       logger -t "network" "restart"
       ifdown "$1"
+      sleep 1
       ifup "$1"
       sleep 60
     fi
