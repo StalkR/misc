@@ -1,4 +1,5 @@
 #!/bin/bash
+# Stuff to use to customize your prompt.
 
 # Return the mount type of given directory (default current).
 mount_type() {
@@ -70,12 +71,16 @@ _ps1_git() {
   BLUE='\e[0;34m';   LBLUE='\e[1;34m';  PURPLE='\e[0;35m'; LPURPLE='\e[1;35m';
   CYAN='\e[0;36m';   LCYAN='\e[1;36m';  NONE='\e[0m';
 
-  mtype=$(mount_type)
-  case "$mtype" in
-    nfs|fuse.sshfs)
-      echo -e " ${PURPLE}no-git:$RED$mtype"
-      return ;;
-  esac
+  # By checking mount type, we can dynamically disable git when on network fs
+  # otherwise it would slow down the shell. However, checking mount type has
+  # the downside to block the shell if there is a non-responsive network
+  # mount (e.g. stale NFS). Uncomment if you want it.
+  #mtype=$(mount_type)
+  #case "$mtype" in
+  #  nfs|fuse.sshfs)
+  #    echo -e " ${PURPLE}no-git:$RED$mtype"
+  #    return ;;
+  #esac
 
   # Find .git directory in upper hierarchy.
   gitdir=$PWD
@@ -103,10 +108,16 @@ _ps1_git() {
 
   # Display other branches.
   echo -ne "$PURPLE"
-  for branch in $(ls "$gitdir/.git/refs/heads"); do
-    [[ "$branch" = "$current" ]] && continue
-    echo -n " $branch"
-  done
+  # Use git to list other branches (current marked with a star).
+  echo -n " $(echo $(git branch -l | grep -v '^*'))"
+  # A little faster way (not running git) is to read directly from .git
+  # however sometimes git does not populate it. Uncomment if you want it.
+  #for branch in "$gitdir/.git/logs/refs/heads/"*; do
+  #  branch=${branch#$gitdir/.git/logs/refs/heads/}
+  #  [[ "$branch" = "*" ]] && break
+  #  [[ "$branch" = "$current" ]] && continue
+  #  echo -n " $branch"
+  #done
 
   # Show stash if anything.
   if [[ -f "$gitdir/.git/logs/refs/stash" ]]; then
