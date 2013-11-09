@@ -1,4 +1,0 @@
-cron:
-- description: IMDb weekly tests
-  url: /tests
-  schedule: every 138 hours
