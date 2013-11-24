@@ -12,11 +12,12 @@ declare -r ACTION="remove-all-but-n-full 2"
 declare -r OPTIONS="--full-if-older-than 30D --exclude-other-filesystems "\
 "--exclude-if-present .nobackup --encrypt-key pgp@example.com"
 
-# Backups: backup <name> <type> <path> [options]
+# Backups: backup <name> <type> <options> [<type> options]
 backups() {
   # e.g. Linux
-  backup boot dir /boot
-  backup rootfs dir / --exclude /tmp
+  backup boot   dir     /boot
+  backup rootfs lvm_fs  vg/rootfs dir /mnt/snap
+  backup vm     lvm_dev vg/vm  1  dir /mnt/snap
   # e.g. Windows
   # backup system dir /cygdrive/c
   # backup data   dir /cygdrive/d
@@ -40,6 +41,7 @@ run() {
       # Cygwin soft limit is too low at 256, hard limit is 3200.
       ulimit -n 2048 ;;
   esac
+  export LVM_SUPPRESS_FD_WARNINGS=1
 
   echo "$(hostname) backups on $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >&3
   begin=$(date '+%s')
@@ -52,19 +54,22 @@ run() {
 
 # backup performs a backup: clean, backup-command, collection status.
 backup() {
-  local name cmd begin elapsed
+  local name cmd begin result elapsed
   name=$1
   cmd=$2
   shift 2
-  begin=$(date '+%s')
   echo -n " * $name... " >&3
+  
   echo "### Backup $TARGET/$name: $cmd $@"
   echo "* Clean"
   duplicity $ACTION --force "$TARGET/$name"
   echo
+
   echo "* Backup"
+  begin=$(date '+%s')
   "$cmd" "$name" "$@"
-  if [[ $? -eq 0 ]]; then
+  result=$?
+  if [[ $result -eq 0 ]]; then
     echo -n "OK" >&3
   else
     echo -n "fail" >&3
@@ -73,9 +78,11 @@ backup() {
   elapsed=$[$(date '+%s') - $begin]
   echo " ($(used "$TARGET/$name"), $(duration $elapsed))" >&3
   echo
+  
   echo "* Collection"
   duplicity collection-status "$TARGET/$name"
   echo
+  return $result
 }
 
 # dir backups a directory.
@@ -85,6 +92,101 @@ dir() {
   src=$2
   shift 2
   duplicity $OPTIONS "$@" "$src" "$TARGET/$name"
+}
+
+# lvm_fs prepares backup of a file system volume (snapshot, mount).
+lvm_fs() {
+  local name vg lv cmd result
+  name=$1
+  vg=${2%/*}
+  lv=${2#*/}
+  cmd=$3
+  shift 3
+  if [[ -z "$vg" ]] || [[ -z "$lv" ]] || ! [[ -e "/dev/$vg/$lv" ]]; then
+    echo "Error: invalid logical volume path or not found" >&2
+    return 1
+  fi
+  if [[ -d "/mnt/snap" ]]; then
+    echo "Error: /mnt/snap already exists - unfinished job?" >&2
+    return 1
+  fi
+  echo "* Snapshot and mount $vg/$lv"
+  # Volume must be RW for EXT3/4 to repair if file system is mounted.
+  if LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -L 10G -n $lv-snap $vg/$lv; then
+    if mkdir -p /mnt/snap; then
+      if mount -o ro /dev/$vg/$lv-snap /mnt/snap; then
+        "$cmd" "$name" "$@"
+        result=$?
+        umount /mnt/snap
+      else
+        result=$?
+      fi
+      rmdir /mnt/snap
+    else
+      result=$?
+    fi
+    lvremove -f $vg/$lv-snap
+  else
+    result=$?
+  fi
+  echo
+  return $result
+}
+
+# lvm_dev prepares backup of a disk volume (snapshot, kpartx, mount).
+lvm_dev() {
+  local name vg lv part cmd x rest dev result
+  name=$1
+  vg=${2%/*}
+  lv=${2#*/}
+  part=$3
+  cmd=$4
+  shift 4
+  if [[ -z "$vg" ]] || [[ -z "$lv" ]] || ! [[ -e "/dev/$vg/$lv" ]]; then
+    echo "Error: invalid logical volume path or not found" >&2
+    return 1
+  fi
+  if [[ -d "/mnt/snap" ]]; then
+    echo "Error: /mnt/snap already exists - unfinished job?" >&2
+    return 1
+  fi
+  echo "* Snapshot and mount $vg/$lv #$part"
+  # Volume must be RW for EXT3/4 to repair if file system is mounted.
+  if lvcreate -s -L 10G -n $lv-snap $vg/$lv; then
+    while read x rest; do
+      if [[ "$x" = *"$part" ]]; then
+        dev=$x
+        break
+      fi
+    done < <(kpartx -l /dev/$vg/$lv-snap)
+    if [[ -n "$dev" ]]; then
+      if kpartx -a /dev/$vg/$lv-snap; then
+        if mkdir -p /mnt/snap; then
+          if mount -o ro /dev/mapper/$dev /mnt/snap; then
+            "$cmd" "$name" "$@"
+            result=$?
+            umount /mnt/snap
+          else
+            result=$?
+          fi
+          rmdir /mnt/snap
+        else
+          result=$?
+        fi
+        kpartx -d /dev/$vg/$lv-snap
+      else
+        result=$?
+      fi
+    else
+      echo "* Partition $part not found"
+      result=1
+    fi
+    lvremove -f $vg/$lv-snap
+  else
+    result=$?
+  fi
+  echo
+  return $result
 }
 
 # used displays space used by target. Only file:// supported.
