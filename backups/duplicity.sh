@@ -32,7 +32,7 @@ run() {
 
   if [[ "${TARGET:0:7}" = "file://" ]]; then
     if [[ ! -d "${TARGET:7}" ]]; then
-      echo "Error: $@" >&2
+      echo "Error: target does not exist $TARGET" >&2
       exit 1
     fi
   fi
