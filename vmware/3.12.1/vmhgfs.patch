@@ -1,0 +1,130 @@
+diff --git a/fsutil.c b/fsutil.c
+index 7481f55..87db1b0 100644
+--- a/fsutil.c
++++ b/fsutil.c
+@@ -1655,8 +1655,8 @@ HgfsStatusConvertToLinux(HgfsStatus hgfsStatus) // IN: Status code to convert
+ void
+ HgfsSetUidGid(struct inode *parent,     // IN: parent inode
+               struct dentry *dentry,    // IN: dentry of file to update
+-              uid_t uid,                // IN: uid to set
+-              gid_t gid)                // IN: gid to set
++              kuid_t uid,                // IN: uid to set
++              kgid_t gid)                // IN: gid to set
+ {
+    struct iattr setUidGid;
+ 
+diff --git a/fsutil.h b/fsutil.h
+index da5c5a1..16b3885 100644
+--- a/fsutil.h
++++ b/fsutil.h
+@@ -56,8 +56,8 @@ typedef struct HgfsAttrInfo {
+    HgfsPermissions otherPerms;     /* Other permissions bits */
+    HgfsPermissions effectivePerms; /* Permissions in effect for the user on the
+                                       host. */
+-   uint32 userId;                  /* UID */
+-   uint32 groupId;                 /* GID */
++   kuid_t userId;                  /* UID */
++   kgid_t groupId;                 /* GID */
+    uint64 hostFileId;              /* Inode number */
+ } HgfsAttrInfo;
+ 
+@@ -91,8 +91,8 @@ int HgfsGetHandle(struct inode *inode,
+ int HgfsStatusConvertToLinux(HgfsStatus hgfsStatus);
+ void HgfsSetUidGid(struct inode *parent,
+                    struct dentry *dentry,
+-                   uid_t uid,
+-                   gid_t gid);
++                   kuid_t uid,
++                   kgid_t gid);
+ struct inode *HgfsGetInode(struct super_block *sb, ino_t ino);
+ void HgfsDoReadInode(struct inode *inode);
+ 
+diff --git a/hgfsDevLinux.h b/hgfsDevLinux.h
+index d81682e..d312b90 100644
+--- a/hgfsDevLinux.h
++++ b/hgfsDevLinux.h
+@@ -48,9 +48,9 @@ typedef struct HgfsMountInfo {
+    uint32 version;            // protocol version
+    uint32 fd;                 // file descriptor of client file
+ #ifndef sun
+-   uid_t uid;                 // desired owner of files
++   kuid_t uid;                 // desired owner of files
+    Bool uidSet;               // is the owner actually set?
+-   gid_t gid;                 // desired group of files
++   kgid_t gid;                 // desired group of files
+    Bool gidSet;               // is the group actually set?
+    unsigned short fmask;      // desired file mask
+    unsigned short dmask;      // desired directory mask
+diff --git a/hgfsProto.h b/hgfsProto.h
+index e066538..8e718d8 100644
+--- a/hgfsProto.h
++++ b/hgfsProto.h
+@@ -505,8 +505,8 @@ struct HgfsAttrV2 {
+                                   * Windows */
+    HgfsAttrFlags flags;          /* Various flags and Windows 'attributes' */
+    uint64 allocationSize;        /* Actual size of file on disk */
+-   uint32 userId;                /* User identifier, ignored by Windows */
+-   uint32 groupId;               /* group identifier, ignored by Windows */
++   kuid_t userId;                /* User identifier, ignored by Windows */
++   kgid_t groupId;               /* group identifier, ignored by Windows */
+    uint64 hostFileId;            /* File Id of the file on host: inode_t on Linux */
+    uint32 volumeId;              /* volume identifier, non-zero is valid. */
+    uint32 effectivePerms;        /* Permissions in effect for the user on the host. */
+diff --git a/inode.c b/inode.c
+index 2999b94..f82a57b 100644
+--- a/inode.c
++++ b/inode.c
+@@ -31,6 +31,9 @@
+ #include <linux/namei.h>
+ #endif
+ #include <linux/highmem.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++#include <linux/dcache.h>
++#endif
+ 
+ #include "compat_cred.h"
+ #include "compat_fs.h"
+@@ -1890,7 +1893,11 @@ HgfsPermission(struct inode *inode,
+ #endif
+                            &inode->i_dentry,
+                            d_alias) {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++         int dcount = d_count(dentry);
++#else
+          int dcount = dentry->d_count;
++#endif
+          if (dcount) {
+             LOG(4, ("Found %s %d \n", dentry->d_name.name, dcount));
+             return HgfsAccessInt(dentry, mask & (MAY_READ | MAY_WRITE | MAY_EXEC));
+@@ -1943,10 +1950,12 @@ HgfsPermission(struct inode *inode,
+       list_for_each(pos, &inode->i_dentry) {
+          int dcount;
+          struct dentry *dentry = list_entry(pos, struct dentry, d_alias);
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
+-         dcount = atomic_read(&dentry->d_count);
+-#else
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++         dcount = d_count(dentry);
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
+          dcount = dentry->d_count;
++#else
++         dcount = atomic_read(&dentry->d_count);
+ #endif
+          if (dcount) {
+             LOG(4, ("Found %s %d \n", (dentry)->d_name.name, dcount));
+diff --git a/module.h b/module.h
+index 911ba8b..f5a7aeb 100644
+--- a/module.h
++++ b/module.h
+@@ -110,9 +110,9 @@ extern int LOGLEVEL_THRESHOLD;
+ 
+ /* Data kept in each superblock in sb->u. */
+ typedef struct HgfsSuperInfo {
+-   uid_t uid;                       /* UID of user who mounted this fs. */
++   kuid_t uid;                       /* UID of user who mounted this fs. */
+    Bool uidSet;                     /* Was the UID specified at mount-time? */
+-   gid_t gid;                       /* GID of user who mounted this fs. */
++   kgid_t gid;                       /* GID of user who mounted this fs. */
+    Bool gidSet;                     /* Was the GID specified at mount-time? */
+    mode_t fmask;                    /* File permission mask. */
+    mode_t dmask;                    /* Directory permission mask. */
