@@ -17,7 +17,7 @@ fail() {
 GRSEC=$(curl http://grsecurity.net/test.php)
 [ -n "$GRSEC" ] || fail "get grsecurity page"
 
-PATCH=$(echo "$GRSEC" | grep -o 'grsecurity-[.0-9]*-[.0-9]*-[0-9]*\.patch' | sort -ru | head -n 1)
+PATCH=$(echo "$GRSEC" | grep -o 'test/grsecurity-[.0-9]*-[.0-9]*-[0-9]*\.patch' | sort -ru | head -n 1 | cut -c6-)
 [ -n "$PATCH" ] || fail "parse patch file from grsec page"
 
 wget -c "http://grsecurity.net/test/$PATCH" || fail "get $PATCH"
