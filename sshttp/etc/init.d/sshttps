@@ -21,7 +21,7 @@ DAEMON=/usr/local/sbin/$NAME
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
-[ -x "$DAEMON" ] || exit 0
+[ -x "$DAEMON" ] || echo "${DAEMON} is not installed." 1>&2 && exit 1;
 
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
