@@ -2,22 +2,18 @@
 '''Calculate or view HTTP Public Key Pins.
 
 Requires OpenSSL binary.
-RFC draft: https://tools.ietf.org/html/draft-ietf-websec-key-pinning-01
+RFC draft: https://tools.ietf.org/html/draft-ietf-websec-key-pinning-11
 
-Example with CAcert Root CA (Class 1) and Class 3 certificates:
+Example with CAcert Root CA (Class 1) certificate:
 $ wget https://www.cacert.org/certs/root.crt
-$ wget https://www.cacert.org/certs/class3.crt
-$ python http_pins.py root.crt class3.crt
+$ python http_pins.py root.crt
 root.crt:
 * SPKI fingerprint (sha256): 6f:28:51:40:9d:71:05:04:a3:51:15:ab:cb:9a:6d:d3:f2:57:7e:c9:37:c9:ef:19:38:92:6f:a8:2f:d6:ff:5d
-class3.crt:
-* SPKI fingerprint (sha256): bd:0d:07:29:6b:43:fa:e0:3b:64:e6:50:cb:d1:8f:5e:26:71:42:52:03:51:89:d3:e1:26:3e:48:14:b4:da:5a
-Public-Key-Pins: max-age=600; pin-sha256="byhRQJ1xBQSjURWry5pt0/JXfsk3ye8ZOJJvqC/W/10="; pin-sha256="vQ0HKWtD+uA7ZOZQy9GPXiZxQlIDUYnT4SY+SBS02lo="
+Public-Key-Pins: max-age=600; pin-sha256="byhRQJ1xBQSjURWry5pt0/JXfsk3ye8ZOJJvqC/W/10="
+Warning! Per RFC you need at minimum two pins
 
 $ python http_pins.py byhRQJ1xBQSjURWry5pt0/JXfsk3ye8ZOJJvqC/W/10=
 SPKI fingerprint (sha256): 6f:28:51:40:9d:71:05:04:a3:51:15:ab:cb:9a:6d:d3:f2:57:7e:c9:37:c9:ef:19:38:92:6f:a8:2f:d6:ff:5d
-
--- StalkR
 '''
 
 import binascii
@@ -80,7 +76,7 @@ def main(args):
   
   # Calculate fingerprints and pins of each certificate
   else:
-    pins = [ 'max-age=600' ]
+    pins = []
     for cert in args[1:]:
       if not os.path.exists(cert):
         print '%s: does not exist' % cert
@@ -90,7 +86,12 @@ def main(args):
       fp_sha256 = fingerprint(spki, hashlib.sha256)
       print '* SPKI fingerprint (sha256): %s' % fp_sha256
       pins.append('pin-sha256="%s"' % fingerprint_to_pin(fp_sha256))
-    print 'Public-Key-Pins: %s' % '; '.join(pins)
+
+    print 'Public-Key-Pins: %s' % '; '.join(['max-age=600'] + pins)
+    if len(pins) < 2:
+      print 'Warning! Per RFC you need at minimum two pins'
+    else:
+      print 'Remember: the secondary pin has to be unrelated (not checked)'
 
 if __name__ == '__main__':
   main(sys.argv)
