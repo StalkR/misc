@@ -1,26 +1,21 @@
-#!/bin/bash
 # Package upgrade all Debian VEs using vzexec.
 
 update_all() {
   local veid
   for veid in $(vzlist -Ho ctid); do
     if ! grep -q Debian /var/lib/vz/private/$veid/etc/issue.net; then
+      echo "--- Skipping VE $veid: not Debian"
       continue
     fi
     echo "--- Updating VE $veid"
-    ve_update $veid || return 1
+    ve_exec $veid 'apt-get update && aptitude upgrade -y && aptitude clean' \
+      || return 1
     echo
   done
 }
 
-ve_update() {
-  ve_exec $1 'apt-get update' && \
-    ve_exec $1 'aptitude upgrade' && \
-    ve_exec $1 'aptitude clean'
-}
-
 ve_exec() {
-  if ! vzctl exec $1 "$2"; then
+  if ! vzctl enter $1 --exec "$2; exit"; then
     echo "Error: '$2' failed"
     return 1
   fi
