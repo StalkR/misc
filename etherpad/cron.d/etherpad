@@ -1,0 +1,8 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# m h  dom mon dow  user  command
+# frequent auto-restart in case it's down
+* * * * * root [[ $(pgrep -cu etherpad) -eq 0 ]] && invoke-rc.d etherpad start >/dev/null
+# daily restart to free up memory
+40 2 * * * root invoke-rc.d etherpad restart >/dev/null

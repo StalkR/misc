@@ -1,0 +1,60 @@
+= NodeJS
+== Install
+cd /usr/local/src
+wget 'http://nodejs.org/dist/v0.10.29/node-v0.10.29.tar.gz'
+tar zxf node-v0.10.29.tar.gz
+cd node-v0.10.29
+./configure
+checkinstall
+# change version (3) from "v0.10.29" to "0.10.29" (dpkg wants numeric)
+# let it run: it creates .deb and installs it
+dpkg -l | grep node
+# ii  node                            0.10.29-1            amd64                nodejs
+
+= Etherpad
+== Install
+adduser --system --home /opt/etherpad --ingroup nogroup --shell /bin/bash etherpad
+su etherpad
+  cd
+  git clone git://github.com/ether/etherpad-lite.git
+  wget 'https://github.com/StalkR/misc/raw/master/etherpad/run.sh'
+  chmod +x run.sh
+  cp etherpad-lite/settings.json{.template,}
+  vim etherpad-lite/settings.json # configure
+  exit
+
+wget 'https://github.com/StalkR/misc/raw/master/etherpad/init.d/etherpad' -O /etc/init.d/etherpad
+wget 'https://github.com/StalkR/misc/raw/master/etherpad/cron.d/etherpad' -O /etc/cron.d/etherpad
+
+== Run
+/etc/init.d/etherpad start
+# if failed/not running, check /opt/etherpad/log/run.log
+
+== Admin pads
+Go to plugin manager at /admin/plugins and install "adminpads".
+Version 0.0.6 has a bug, pads show as [Object object].
+Edit /opt/etherpad/etherpad-lite/node_modules/ep_adminpads/index.js
+-        entryset={padName:value, lastEdited:''};
++        entryset={padName:value.toString(), lastEdited:''};
+
+== Patch: always monospace font
+su etherpad
+  cd ~/etherpad-lite
+  wget 'https://github.com/StalkR/misc/raw/master/etherpad/monospace.patch'
+  git apply monospace.patch
+  rm -f monospace.patch
+
+= Apache reverse proxy
+Etherpad supports on / as well as /path/ with no configuration.
+
+Required apache modules:
+  a2enmod proxy proxy_http
+  invoke-rc.d apache2 restart
+
+Example configuration:
+  <Proxy http://localhost:9001>
+    Order deny,allow
+    Allow from all
+  </Proxy>
+  ProxyPass /epad/ http://localhost:9001/ retry=5
+  ProxyPassReverse /epad/ http://localhost:9001/

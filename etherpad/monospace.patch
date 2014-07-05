@@ -1,0 +1,13 @@
+diff --git a/src/static/js/pad.js b/src/static/js/pad.js
+index 9a42bcc..be3be68 100644
+--- a/src/static/js/pad.js
++++ b/src/static/js/pad.js
+@@ -329,6 +329,8 @@ function handshake()
+       {
+         pad.changeViewOption('useMonospaceFont', true);
+       }
++      // Always monospace
++      pad.changeViewOption('useMonospaceFont', true);
+       // if the globalUserName value is set we need to tell the server and the client about the new authorname
+       if (settings.globalUserName !== false)
+       {
