@@ -3,26 +3,26 @@
 
 main() {
   if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 <interface> [<host to ping>]"
+    echo "Usage: $0 <interface> [<host to ping>] [<vpn name>]"
     exit 1
   fi
   if [[ -z "$DAEMON" ]]; then
     DAEMON=1 nohup "$0" "$@" >/dev/null 2>&1 &
     exit
   fi
-  loop "$1" "${2:-8.8.8.8}"
+  loop "$1" "${2:-8.8.8.8}" "$3"
 }
 
 loop() {
   while sleep 10; do
     if ! alive "$1" "$2"; then
       logger -t "openvpn" "restart"
-      invoke-rc.d openvpn stop
+      invoke-rc.d openvpn stop "$3"
       while ip link list dev "$1" >/dev/null 2>&1 || \
         pgrep openvpn >/dev/null; do
         sleep 1
       done
-      invoke-rc.d openvpn start
+      invoke-rc.d openvpn start "$3"
       sleep 60
     fi
   done
