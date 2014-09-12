@@ -1,0 +1,47 @@
+#!/bin/bash
+# IPv6 Neighbor Discovery Proxy helper and daemon.
+
+# Add router and hosts. Example: router is on eth0, hosts on eth1.
+declare -a PROXY=(
+  '2001:db8:1337:1fff:ff:ff:ff:ff dev eth0'
+  '2001:db8:1337::1 dev eth1'
+  '2001:db8:1337::2 dev eth1'
+)
+
+proxy() {
+  local p
+  for p in "${PROXY[@]}"; do
+    ip neigh $1 proxy $p
+  done
+}
+
+loop() {
+  proxy $1
+  if [[ $2 -gt 0 ]]; then
+    while sleep $2; do
+      proxy $1
+    done
+  fi
+}
+
+main() {
+  if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <add|del> [<loop delay>]"
+    exit 1
+  fi
+  local action=$1
+  if [[ "$action" != "add" ]] && [[ "$action" != "del" ]]; then
+    echo "Error: invalid action $action, either add or del."
+    exit 1
+  fi
+  local delay=${2:-0}
+  if ! [[ "$delay" =~ ^[0-9]+$ ]]; then
+    echo "Error: invalid delay $delay, must be a number."
+    exit 1
+  fi
+  loop $action $delay
+}
+
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+  main "$@"
+fi
