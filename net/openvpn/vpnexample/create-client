@@ -43,7 +43,7 @@ create() {
 }
 
 package() {
-  local name tmp tmpl conf
+  local name tmp files tmpl conf
   # Derive VPN name from current directory (basename)
   vpn=${PWD##*/}
   if [[ -z "$vpn" ]]; then
@@ -55,15 +55,17 @@ package() {
   cp keys/ca.crt keys/ta.key "keys/$1.crt" "keys/$1.key" "$tmp/$vpn/" \
     || error "copy failed"
   rm -f "keys/$1.key"
+  files=()
   for tmpl in *.conf *.ovpn; do
     if [[ "$tmpl" == "*.conf" ]] || [[ "$tmpl" == "*.ovpn" ]]; then
       continue
     fi
     conf=${tmpl/-template-/-$1-}
     sed "s/#NAME#/$1/" "$tmpl" > "$tmp/$conf" || error "conf template failed"
+    files+=("$conf")
   done
   pushd "$tmp" >/dev/null
-  tar zcf "$1.tgz" "$vpn" *.conf *.ovpn || error "archive failed"
+  tar zcf "$1.tgz" "$vpn" "${files[@]}" || error "archive failed"
   popd >/dev/null
   mv "$tmp/$1.tgz" clients/
   rm -rf "$tmp"
