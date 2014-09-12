@@ -16,7 +16,7 @@ main() {
 loop() {
   while sleep 10; do
     if ! alive "$1" "$2"; then
-      logger -t "openvpn" "restart"
+      logger -t "openvpn" "restart $3"
       invoke-rc.d openvpn stop "$3"
       while ip link list dev "$1" >/dev/null 2>&1; do
         sleep 1
