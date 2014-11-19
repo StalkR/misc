@@ -12,7 +12,7 @@ Patch:
 
     tar xf /usr/lib/vmware-tools/modules/source/vmhgfs.tar -C /tmp
     pushd /tmp/vmhgfs-only
-    curl https://raw.github.com/StalkR/misc/master/vmware/3.16.0/vmhgfs.patch | patch -p1
+    curl https://raw.githubusercontent.com/StalkR/misc/master/vmware/3.16.0/vmhgfs.patch | patch -p1
     popd
     tar cf /usr/lib/vmware-tools/modules/source/vmhgfs.tar -C /tmp vmhgfs-only
     rm -rf /tmp/vmhgfs-only
