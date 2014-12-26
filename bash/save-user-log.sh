@@ -19,6 +19,11 @@ save_user_log() {
   fi
   local re i
   re="Accepted publickey for $1\|session \(opened\|closed\) for user $1"
+  # Do not write directly to user's home directory or a user can prepare
+  # a symlink and have the script write somewhere else. Instead, write
+  # to temp file and move it.
+  file=$(mktemp)
+  chmod go+r "$file"
   {
     for i in {100..2}; do
       if [[ -f "/var/log/auth.log.$i.gz" ]]; then
@@ -31,7 +36,10 @@ save_user_log() {
     if [[ -f /var/log/auth.log ]]; then
       grep "$re" < /var/log/auth.log
     fi
-  } > /home/$1/auth.log
+  } > "$file"
+  # Use -T to treat dest as a normal file, otherwise a user can create a
+  # directory "auth.log" (or symlink to a directory) to have us write there.
+  mv -T -f "$file" /home/$1/auth.log 2>/dev/null || rm -f "$file"
 }
 
 if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
