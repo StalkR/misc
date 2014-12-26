@@ -1,9 +1,9 @@
 #!/bin/bash
-# Get & build grsec - works for linux >= 3.0.5, last tested with 3.3.6
+# Get & build grsec - works for linux >= 3.0.5, last tested with 3.17.7
 # Notes:
 #  * since 3.x, files are in /v3.0/ (even if x > 0)
 #  * since 3.0.5, only the .tar is signed (and no longer compressed archives)
-#  * save your kernel configs in the same directory
+#  * save your kernel configs in the same directory, last edited is used
 # For the script to work, be sure you already have successfully done the process
 # manually once (added pgp keys, installed gcc plugins, etc).
 
@@ -37,21 +37,25 @@ SIGN="$TAR.sign"
 wget -c "http://www.kernel.org/pub/linux/kernel/v$MAJOR.0/$XZ" || fail "get $XZ"
 wget -c "http://www.kernel.org/pub/linux/kernel/v$MAJOR.0/$SIGN" || fail "get $SIGN"
 
-echo;echo "Decompress..."
+echo
+echo "Decompress..."
 xz --decompress --keep "$XZ" || fail "decompress $XZ"
 
 gpg --verify "$SIGN" || fail "wrong $SIGN signature"
 
-echo;echo "Remove old build..."
+echo
+echo "Remove old build..."
 rm -rf "linux-$KVER"
 
-echo;echo "Extract..."
+echo
+echo "Extract..."
 tar xf "$TAR" || fail "extract $TAR"
 rm -f "$TAR" || fail "remove $TAR"
 cd "linux-$KVER" || fail "cd linux-$KVER"
 patch -p1 < "../$PATCH" || fail "apply $PATCH"
 
-echo;echo "Configure..."
+echo
+echo "Configure..."
 CONFIG=$(echo ../config-* | tr ' ' '\n' | sort -r | head -n 1)
 [ -n "$CONFIG" ] || fail "no config file"
 cp "$CONFIG" .config
@@ -62,7 +66,20 @@ if [ "$CONFIG" != "../config-$KVER-grsec" ]; then
   cp .config "../config-$KVER-grsec"
 fi
 
-echo;echo "Clean..."
+echo
+echo "Clean..."
 make-kpkg clean
-echo;echo "Build..."
-time CONCURRENCY_LEVEL=4 fakeroot make-kpkg --initrd --revision "$(date '+%Y%m%d')" kernel_image kernel_headers
+echo
+echo "Build..."
+# Use KCONFIG_OVERWRITECONFIG to avoid scripts/kconfig/conf creating .config.old
+# but still for some reason it ends up in the .deb as /boot/config-xxx.old :(
+time KCONFIG_OVERWRITECONFIG=1 \
+  CONCURRENCY_LEVEL=$(grep '^processor' /proc/cpuinfo | wc -l) \
+  make-kpkg \
+  --rootcmd fakeroot \
+  --initrd \
+  --revision "$(date '+%Y%m%d')" \
+  kernel_image kernel_headers
+
+# If there is already a deb for this version, already installed and running
+# and you want to upgrade, use "--append-to-version -2".
