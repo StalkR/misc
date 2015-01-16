@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -45,15 +46,15 @@ func main() {
 		log.Fatal("-default is required")
 	}
 	transferIPs = strings.Split(*allowTransfer, ",")
-	routes := make(map[string]string)
+	routes = make(map[string]string)
 	if *routeList != "" {
 		for _, s := range strings.Split(*routeList, ",") {
 			s := strings.SplitN(s, "=", 2)
 			if len(s) != 2 {
 				log.Fatal("invalid -routes format")
 			}
-			if !strings.HasSuffix(s[1], ".") {
-				s[1] += "."
+			if !strings.HasSuffix(s[0], ".") {
+				s[0] += "."
 			}
 			routes[s[0]] = s[1]
 		}
@@ -106,7 +107,15 @@ func allowed(w dns.ResponseWriter, req *dns.Msg) bool {
 }
 
 func proxy(addr string, w dns.ResponseWriter, req *dns.Msg) {
+	transport := "udp"
+	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
+		transport = "tcp"
+	}
 	if isTransfer(req) {
+		if transport != "tcp" {
+			dns.HandleFailed(w, req)
+			return
+		}
 		t := new(dns.Transfer)
 		c, err := t.In(req, addr)
 		if err != nil {
@@ -119,7 +128,7 @@ func proxy(addr string, w dns.ResponseWriter, req *dns.Msg) {
 		}
 		return
 	}
-	c := &dns.Client{Net: "udp"}
+	c := &dns.Client{Net: transport}
 	resp, _, err := c.Exchange(req, addr)
 	if err != nil {
 		dns.HandleFailed(w, req)
