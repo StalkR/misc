@@ -6,10 +6,10 @@ you can specify a list of IPs allowed to transfer (AXFR/IXFR).
 
 Example usage:
 
-    $ go run proxy.go -address ':53' \
-        -default '8.8.8.8:53' \
-        -route '.example.com.=8.8.4.4:53' \
-        -allow-transfer '1.2.3.4,5.6.7.8'
+    $ go run proxy.go -address :53 \
+        -default 8.8.8.8:53 \
+        -route .example.com.=8.8.4.4:53 \
+        -allow-transfer 1.2.3.4,5.6.7.8
 
 A query for `example.net` or `example.com` will go to `8.8.8.8:53`, the default.
 However, a query for `subdomain.example.com` will go to `8.8.4.4:53`.
@@ -32,7 +32,7 @@ However, a query for `subdomain.example.com` will go to `8.8.4.4:53`.
 Example:
 
     # Allow transfer from: puck.nether.net
-    DAEMON_ARGS="-default 127.0.0.1:1053 -route '.example.com.=127.0.0.1:2053' -allow-transfer '204.42.254.5'"
+    DAEMON_ARGS="-default 127.0.0.1:1053 -route .example.com.=8.8.4.4:53 -allow-transfer 1.2.3.4,5.6.7.8"
 
 # Start/Stop #
 
