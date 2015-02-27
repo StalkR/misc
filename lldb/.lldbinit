@@ -1,4 +1,4 @@
 # Disable "do you really want to proceed" when attached
 set set interpreter.prompt-on-quit false
 
-command script import .lldb/msearch.py
+command script import ~/.lldb/msearch.py

@@ -81,10 +81,13 @@ def cmd_msearch(debugger, command, result, internal_dict):
   if not lldb.process.is_stopped:
     print >>result, 'process must be stopped first: process interrupt'
     return
-  pattern = command
-  for r in msearch(pattern):
+  s = command
+  if not s:
+    print >>result, 'Usage: msearch <string to search>'
+    return
+  for r in msearch(s):
     print >>result, 'Found %s at 0x%x%s in %s %s' % (
-        pattern, r['address'],
+        s, r['address'],
         '-0x%x' % r.get('upto', '') if r.get('upto') else '',
         r['curperm'], r.get('purpose', ''))
 
