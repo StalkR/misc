@@ -1,3 +1,4 @@
+#!/bin/bash
 # Package upgrade all Debian VEs using vzexec.
 
 update_all() {
