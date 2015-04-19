@@ -146,11 +146,11 @@ def decompress(buf):
           raise ErrorCorrupt
         x = src[s-4] | (src[s-3] << 8) | (src[s-2] << 16) | (src[s-1] << 24)
       length = x + 1
-      if length < 0:
+      if length <= 0:
         raise Error('Unsupported literal length')
       if length > len(dst)-d or length > len(src)-s:
         raise ErrorCorrupt
-      dst = dst[:d] + src[s:s+length] + dst[length:]
+      dst = dst[:d] + src[s:s+length] + dst[d+length:]
       d += length
       s += length
       continue
@@ -159,7 +159,7 @@ def decompress(buf):
       s += 2
       if s > len(src):
         raise ErrorCorrupt
-      length = 4 + (src[s-2]>>2)&0x7
+      length = 4 + ((src[s-2]>>2)&0x7)
       offset = ((src[s-2]&0xe0)<<3) | src[s-1]
 
     elif b == tagCopy2:
