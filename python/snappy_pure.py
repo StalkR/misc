@@ -1,7 +1,7 @@
-#!/usr/bin/python
-# Snappy compression pure python implementation based on Snappy-Go
-# https://code.google.com/p/snappy-go.
-# TODO: encode.
+"""Snappy compression pure python implementation.
+
+The implementation is based on Snappy-Go (https://code.google.com/p/snappy-go).
+TODO: encode."""
 
 class Error(Exception):
   """Base error class for snappy module."""
