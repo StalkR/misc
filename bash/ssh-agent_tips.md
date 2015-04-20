@@ -50,7 +50,7 @@ Put in your `.bashrc`:
 Put in your `.ssh/rc`:
 
     #!/bin/sh
-    # Keep sh in case there is no bash.
+    # Do not use bash, this file is executed by /bin/sh regardless of shebang.
 
     # Maintain ~/.ssh-agent symlink to the current SSH agent.
     if [ -e "$SSH_AUTH_SOCK" ]; then
