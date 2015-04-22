@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """Tests for http library."""
 
 import http

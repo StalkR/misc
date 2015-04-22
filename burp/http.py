@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """Library to manipulate HTTP messages.
 
 The main purpose is to help developing burp extensions.
