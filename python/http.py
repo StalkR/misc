@@ -1,30 +1,42 @@
 #!/usr/bin/python
-"""Library to manipulate HTTP messages."""
+"""Library to manipulate HTTP messages.
+
+The main purpose is to help developing burp extensions.
+Since jython does not handle exceptions well ('except' does not work), we do
+not raise any exception explicitly and check values to avoid raising any.
+"""
 
 import urllib
-
-
-class Error(Exception):
-  """Base exception class for library errors."""
 
 
 class Request(object):
   """Request represents an HTTP request."""
 
-  def __init__(self, content=''):
-    if not content:
+  Method = ''
+  Version = ''
+  Path = ''
+  Query = ''
+  Headers = None
+  Body = ''
+
+  @classmethod
+  def Parse(cls, content):
+    parsed = parse(content)
+    if not parsed:
       return
-    f, h, b = parse(content)
-    w = f.split(' ')
+    first, headers, body = parsed
+    w = first.split(' ')
     if len(w) != 3:
-      raise Error('invalid request')
-    self.Method = w[0]
-    self.Version = w[2]
+      return
+    r = cls()
+    r.Method = w[0]
+    r.Version = w[2]
     q = w[1].split('?')
-    self.Path = q[0]
-    self.Query = q[1] if len(q) > 1 else ''
-    self.Headers = Headers(h)
-    self.Body = b
+    r.Path = q[0]
+    r.Query = q[1] if len(q) > 1 else ''
+    r.Headers = Headers(headers)
+    r.Body = body
+    return r
 
   def String(self):
     path = self.Path
@@ -40,18 +52,28 @@ class Request(object):
 class Response(object):
   """Response represents an HTTP response."""
 
-  def __init__(self, content=''):
-    if not content:
+  Version = ''
+  Status = 0
+  Message = ''
+  Headers = None
+  Body = ''
+
+  @classmethod
+  def Parse(cls, content):
+    parsed = parse(content)
+    if not parsed:
       return
-    f, h, b = parse(content)
-    w = f.split(' ', 2)
+    first, headers, body = parsed
+    w = first.split(' ', 2)
     if len(w) < 3:
-      raise Error('invalid response')
-    self.Version = w[0]
-    self.Status = int(w[1])
-    self.Message = w[2]
-    self.Headers = Headers(h)
-    self.Body = b
+      return
+    r = cls()
+    r.Version = w[0]
+    r.Status = int(w[1])
+    r.Message = w[2]
+    r.Headers = Headers(headers)
+    r.Body = body
+    return r
 
   def String(self):
     return '%s %i %s\r\n%s\r\n\r\n%s' % (
@@ -142,7 +164,7 @@ def parse(m):
   """parse parses an HTTP message into 3 parts: first line, headers, body."""
   p = m.find('\r\n')
   if p == -1:
-    raise Error('invalid message')
+    return
   first = m[:p]
   q = m.find('\r\n\r\n')
   headers = m[p+2:q]

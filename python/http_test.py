@@ -9,7 +9,7 @@ class TestRequest(unittest.TestCase):
 
   def testSimple(self):
     m = 'GET /?x HTTP/1.1\r\nHost: y\r\n\r\nbody'
-    r = http.Request(m)
+    r = http.Request.Parse(m)
     self.assertEqual('GET', r.Method)
     self.assertEqual('/', r.Path)
     self.assertEqual('x', r.Query)
@@ -23,7 +23,7 @@ class TestResponse(unittest.TestCase):
 
   def testSimple(self):
     m = 'HTTP/1.1 200 It works\r\nServer: x\r\n\r\nbody'
-    r = http.Response(m)
+    r = http.Response.Parse(m)
     self.assertEqual('HTTP/1.1', r.Version)
     self.assertEqual(200, r.Status)
     self.assertEqual('It works', r.Message)
