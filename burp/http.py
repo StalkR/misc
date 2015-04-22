@@ -39,7 +39,7 @@ class Request(object):
 
   def String(self):
     path = self.Path
-    return '%s %s %s\r\n%s\r\n\r\n%s' % (
+    return '%s %s %s\r\n%s\r\n%s' % (
           self.Method,
           '%s?%s' % (path, self.Query) if self.Query else path,
           self.Version,
@@ -75,7 +75,7 @@ class Response(object):
     return r
 
   def String(self):
-    return '%s %i %s\r\n%s\r\n\r\n%s' % (
+    return '%s %i %s\r\n%s\r\n%s' % (
           self.Version,
           self.Status,
           self.Message,
@@ -116,7 +116,9 @@ class Headers(object):
     self.Add(name, value)
 
   def String(self):
-    return '\r\n'.join('%s: %s' % (key, value) for key, value in self.h)
+    if not self.h:
+      return ''
+    return '\r\n'.join('%s: %s' % (k, v) for k, v in self.h) + '\r\n'
 
 
 class Values(object):
