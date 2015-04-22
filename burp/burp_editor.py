@@ -26,7 +26,7 @@ from burp import IMessageEditorTabFactory
 from burp import IMessageEditorTab
 
 # You may change the library here but keep it imported as editor.
-import useragent as editor
+import b64 as editor
 
 
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
