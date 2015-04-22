@@ -47,6 +47,11 @@ class TestHeaders(unittest.TestCase):
     h.Del('a')
     self.assertEqual(None, h.Get('a'))
 
+  def testEmpty(self):
+    self.assertEqual(http.Headers().h, [])
+    self.assertEqual(http.Headers('\r\n\r\n').h, [])
+    self.assertEqual(http.Headers(': xx\r\n').h, [])
+
 
 class TestValues(unittest.TestCase):
   
@@ -60,6 +65,11 @@ class TestValues(unittest.TestCase):
     self.assertEqual('x', v.Get('a'))
     v.Del('a')
     self.assertEqual(None, v.Get('a'))
+
+  def testEmpty(self):
+    self.assertEqual(http.Values().v, [])
+    self.assertEqual(http.Values('&&&').v, [])
+    self.assertEqual(http.Values('&=1').v, [])
 
 
 if __name__ == '__main__':

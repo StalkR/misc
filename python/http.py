@@ -88,10 +88,12 @@ class Response(object):
 class Headers(object):
   """Headers represents headers of an HTTP message."""
 
-  def __init__(self, headers):
+  def __init__(self, headers=''):
     self.h = []
     for line in headers.split('\r\n'):
       w = line.split(':', 1)
+      if not w[0]:
+        continue
       if len(w) == 1:
         self.Add(w[0], '')
       else:
@@ -128,6 +130,8 @@ class Values(object):
       q = q[:p]
     for a in q.split('&'):
       w = a.split('=', 1)
+      if not w[0]:
+        continue
       if len(w) == 1:
         self.Add(w[0], '')
       else:
