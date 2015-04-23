@@ -1,5 +1,7 @@
 """Burp editor extension example.
 
+The only thing you need to change is CHANGEME in the import line.
+
 It creates a new tab in the proxy tab for some requests and responses, defined
 by your criteria. In this tab, you define which text you want displayed. In the
 repeater tab, you may edit that text, and the request will be rebuilt according
@@ -25,8 +27,7 @@ from burp import IBurpExtender
 from burp import IMessageEditorTabFactory
 from burp import IMessageEditorTab
 
-# You may change the library here but keep it imported as editor.
-import b64 as editor
+import CHANGEME as editor
 
 
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
