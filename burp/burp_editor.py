@@ -35,7 +35,7 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
     self._callbacks = callbacks
     callbacks.setExtensionName(editor.NAME)
     callbacks.registerMessageEditorTabFactory(self)
-  
+
   def createNewInstance(self, controller, editable):
     return EditorTab(self, controller, editable)
 
@@ -43,46 +43,37 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
 class EditorTab(IMessageEditorTab):
 
   def __init__(self, extender, controller, editable):
-    self._content = ''
-    self._isRequest = False
-    self._txtInput = extender._callbacks.createTextEditor()
-    self._txtInput.setEditable(editable)
-    
+    self.editor = extender.callbacks.createTextEditor()
+    self.editor.setEditable(editable)
+
   def getTabCaption(self):
     return editor.TITLE
-    
+
   def getUiComponent(self):
-    return self._txtInput.getComponent()
-    
+    return self.editor.getComponent()
+
   def isEnabled(self, content, isRequest):
     s = content.tostring()
     r = editor.Request.Parse(s) if isRequest else editor.Response.Parse(s)
     return r.Enabled() if r else False
-    
+
   def setMessage(self, content, isRequest):
     if not content:
-      self._txtInput.setText(None)
       return
-    self._content = content
-    self._isRequest = isRequest
     s = content.tostring()
     r = editor.Request.Parse(s) if isRequest else editor.Response.Parse(s)
-    if not r:
-      return
-    self._txtInput.setText(r.Text())
+    self.editor.setText(r.Text())
+    self.r = r
 
   def getMessage(self):
-    if not self._txtInput.isTextModified():
-      return self._content
-    assert self._isRequest
-    r = editor.Request.Parse(self._content.tostring())
-    if not r:
-      return self._content
-    r.Load(self._txtInput.getText().tostring())
-    return r.String()
-    
+    if not self.editor.isTextModified():
+      return self.editor.getText()
+    # we rely on setMessage being called before to set self.r
+    self.r.Load(self.editor.getText().tostring())
+    return self.r.String()
+
   def isModified(self):
-    return self._txtInput.isTextModified()
-    
+    return self.editor.isTextModified()
+
   def getSelectedData(self):
-    return self._txtInput.getSelectedText()
+    return self.editor.getSelectedText()
