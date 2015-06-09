@@ -57,7 +57,19 @@ Put in your `.ssh/rc`:
       ln -snf "$SSH_AUTH_SOCK" ~/.ssh-agent
     fi
 
+    # sshd(8) says if no ~/.ssh/rc, xauth is run; so we have to do it ourselves.
+    if read proto cookie && [ -n "$DISPLAY" ]; then
+      if [ "${DISPLAY:0:10}" = "localhost:" ]; then
+        # sshd with X11UseLocalhost=yes
+        xauth -q add "unix:${DISPLAY:10}" "$proto" "$cookie"
+      else
+        # sshd with X11UseLocalhost=no
+        xauth -q add "$DISPLAY" "$proto" "$cookie"
+      fi
+    fi
+
 Then you can use ssh forwarding, use screen and your ssh agent always works.
+Also, X11 forwarding still works.
 
 By the way, instead of ssh and typing screen, I use a handy `co` function that automatically reattaches to the current screen session or creates a new one:
 
