@@ -9,7 +9,7 @@ update_all() {
       continue
     fi
     echo "--- Updating VE $veid"
-    ve_exec $veid 'apt-get update && aptitude upgrade -y && aptitude clean' \
+    ve_exec $veid 'apt-get update && aptitude safe-upgrade -y && aptitude dist-upgrade -y && aptitude clean' \
       || return 1
     echo
   done
