@@ -9,7 +9,7 @@ import (
 	"net"
 	"os/exec"
 
-	pty "github.com/tianon/debian-golang-pty"
+	"github.com/kr/pty"
 )
 
 var address = flag.String("listen", ":1234", "Address to listen on ([ip]:port).")
