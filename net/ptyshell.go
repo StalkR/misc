@@ -44,13 +44,8 @@ func handle(conn net.Conn) {
 	}
 	go cp(conn, shell)
 	go cp(shell, conn)
-	// wait for one copy to signal termination and close both socket/pty
-	// this will make the other copy stop as well
 	<-done
 	conn.Close()
 	shell.Close()
-	// wait for the other copy to finish before closing channel
-	<-done
-	close(done)
 	log.Printf("[%s] done", remote)
 }
