@@ -1,11 +1,9 @@
 #!/bin/bash
-# Get & build grsec - works for linux >= 3.0.5, last tested with 3.17.7
-# Notes:
-#  * since 3.x, files are in /v3.0/ (even if x > 0)
-#  * since 3.0.5, only the .tar is signed (and no longer compressed archives)
-#  * save your kernel configs in the same directory, last edited is used
+# Get & build grsec - last tested with 4.3.3
 # For the script to work, be sure you already have successfully done the process
 # manually once (added pgp keys, installed gcc plugins, etc).
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 fail() {
   echo "Error: $@" >&2
@@ -34,8 +32,8 @@ MINOR=${REST%%.*} # => b
 TAR="linux-$KVER.tar"
 XZ="$TAR.xz"
 SIGN="$TAR.sign"
-wget -c "http://www.kernel.org/pub/linux/kernel/v$MAJOR.0/$XZ" || fail "get $XZ"
-wget -c "http://www.kernel.org/pub/linux/kernel/v$MAJOR.0/$SIGN" || fail "get $SIGN"
+wget -c "http://www.kernel.org/pub/linux/kernel/v$MAJOR.x/$XZ" || fail "get $XZ"
+wget -c "http://www.kernel.org/pub/linux/kernel/v$MAJOR.x/$SIGN" || fail "get $SIGN"
 
 echo
 echo "Decompress..."
