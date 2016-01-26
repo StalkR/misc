@@ -38,9 +38,7 @@ update_sums() {
 
   if [[ -z "$oldsum" ]] || [[ $(wc -l <<< "$oldsum") -ne 1 ]]; then
     error "No sum or multiples matches, should not happen here."
-  elif [[ "$oldsum" = "$newsum" ]]; then
-    error "Sums are the same."
-  else
+  elif [[ "$oldsum" != "$newsum" ]]; then
     sed -i "s#$oldsum  \(.*\)#$newsum  \1#" "$sums"
     echo "Updated $sums: $oldsum -> $newsum."
   fi
