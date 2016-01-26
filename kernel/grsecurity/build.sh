@@ -54,7 +54,8 @@ patch -p1 < "../$PATCH" || fail "apply $PATCH"
 
 echo
 echo "Configure..."
-CONFIG=$(echo ../config-* | tr ' ' '\n' | sort -r | head -n 1)
+CONFIG=$(echo ../config-* | tr ' ' '\n' \
+  | sed 's/^config-//;s/-grsec$//' | sort -r | head -n 1)
 [ -n "$CONFIG" ] || fail "no config file"
 cp "$CONFIG" .config
 # Using old config
