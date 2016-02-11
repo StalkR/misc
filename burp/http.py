@@ -56,9 +56,10 @@ class Response(object):
   Message = ''
   Headers = None
   Body = ''
+  Request = None
 
   @classmethod
-  def Parse(cls, content):
+  def Parse(cls, content, request=None):
     parsed = parse(content)
     if not parsed:
       return
@@ -72,6 +73,7 @@ class Response(object):
     r.Message = w[2]
     r.Headers = Headers(headers)
     r.Body = body
+    r.Request = request
     return r
 
   def String(self):
