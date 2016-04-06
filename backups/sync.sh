@@ -19,12 +19,15 @@ sync() {
   # Pull remote docs locally, do not delete anything if it disappears on remote.
   log 'Pull docs' transfer 'example.com:/mnt/docs/' '/mnt/nas/docs/'
   # Push local docs remotely, list files to upload and ask before continuing (if any).
-  log "Push docs" transfer_ask '/mnt/nas/docs/' 'example.com/mnt/docs/'
+  log "Push docs" transfer_ask '/mnt/nas/docs/' 'example.com:/mnt/docs/'
 
-  # Push local photos remotely, encrypted with a key
+  # Push local photos remotely, encrypted with key using encfs.
+  # Local files are untouched, encfs is used to push encrypted files to
+  # destination, so that destination does not see files in clear.
+  # It's a full sync, files are deleted remotely if local files are deleted.
   log 'Push photos' transfer_enc 'secret' '/mnt/nas/photos/' 'example.com:/mnt/photos/'
 
-  # Note it uses rsync, so trailing slash means contents of the directory.
+  # Trailing slash means contents of the directory, what we want (cf. rsync).
 }
 
 
