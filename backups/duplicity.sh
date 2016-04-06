@@ -28,7 +28,7 @@ backups() {
 
 # run runs the backups with logging: fd 1 (stdout) details, fd 3 summary.
 run() {
-  local begin elapsed
+  local host begin elapsed
 
   if [[ "${TARGET:0:7}" = "file://" ]]; then
     if [[ ! -d "${TARGET:7}" ]]; then
@@ -43,7 +43,8 @@ run() {
   esac
   export LVM_SUPPRESS_FD_WARNINGS=1
 
-  echo "$(hostname) backups on $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >&3
+  host=$(hostname | tr -d '\r')
+  echo "$host backups on $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >&3
   begin=$(date '+%s')
   errors=0  # Global.
   backups
@@ -59,7 +60,7 @@ backup() {
   cmd=$2
   shift 2
   echo -n " * $name... " >&3
-  
+
   echo "### Backup $TARGET/$name: $cmd $@"
   echo "* Clean"
   duplicity $ACTION --force "$TARGET/$name"
@@ -78,7 +79,7 @@ backup() {
   elapsed=$[$(date '+%s') - $begin]
   echo " ($(used "$TARGET/$name"), $(duration $elapsed))" >&3
   echo
-  
+
   echo "* Collection"
   duplicity collection-status "$TARGET/$name"
   echo
