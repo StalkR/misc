@@ -13,19 +13,19 @@ sync() {
   # Ensure directories are there (e.g. mounted)
   check_exists '/mnt/nas/backups'
 
-  # Pull remote backups locally, delete when remote deletes stuff (full sync).
-  log 'Pull backups' transfer --delete 'example.com:/mnt/backups/' '/mnt/nas/backups/'
-
   # Pull remote docs locally, do not delete anything if it disappears on remote.
-  log 'Pull docs' transfer 'example.com:/mnt/docs/' '/mnt/nas/docs/'
+  transfer 'Pull docs' 'example.com:/mnt/docs/' '/mnt/nas/docs/'
   # Push local docs remotely, list files to upload and ask before continuing (if any).
-  log "Push docs" transfer_ask '/mnt/nas/docs/' 'example.com:/mnt/docs/'
+  transfer_ask 'Push docs' '/mnt/nas/docs/' 'example.com:/mnt/docs/'
+
+  # Pull remote backups locally, delete when remote deletes stuff (full sync).
+  transfer_del 'Pull backups' 'example.com:/mnt/backups/' '/mnt/nas/backups/'
 
   # Push local photos remotely, encrypted with key using encfs.
   # Local files are untouched, encfs is used to push encrypted files to
   # destination, so that destination does not see files in clear.
   # It's a full sync, files are deleted remotely if local files are deleted.
-  log 'Push photos' transfer_enc 'secret' '/mnt/nas/photos/' 'example.com:/mnt/photos/'
+  transfer_enc 'Push photos' 'secret' '/mnt/nas/photos/' 'example.com:/mnt/photos/'
 
   # Trailing slash means contents of the directory, what we want (cf. rsync).
 }
@@ -74,7 +74,6 @@ log() {
   echo -n " * $1... " >&3
   shift
   begin=$(date '+%s')
-  echo "### $@"
   "$@"
   result=$?
   if [[ $result -eq 0 ]]; then
@@ -89,14 +88,47 @@ log() {
 }
 
 transfer() {
+  local msg
+  msg=$1
+  shift
+  echo "### transfer $@"
+  log "$msg" _rsync "$@"
+}
+
+transfer_del() {
+  local msg
+  msg=$1
+  shift
+  echo "### transfer_del $@"
+  log "$msg" _rsync --delete "$@"
+}
+
+transfer_ask() {
+  local msg
+  msg=$1
+  shift
+  echo "### transfer_ask $@"
+  log "$msg" _rsync_ask "$@"
+}
+
+transfer_enc() {
+  local msg key
+  msg=$1
+  key=$2
+  shift 2
+  echo "### transfer_enc *** $@"
+  log "$msg" _rsync_enc "$key" "$@"
+}
+
+_rsync() {
   local extra
   interactive && extra='--progress'
   rsync -e "$RSH" --modify-window=10 -rltzvh $extra "$@"
 }
 
-transfer_ask() {
+_rsync_ask() {
   local dry result answer
-  dry=$(transfer -n "$@")
+  dry=$(_rsync -n "$@")
   result=$?
   dry=$(grep -v '^\./$' <<< "$dry")
   echo "$dry"
@@ -109,10 +141,10 @@ transfer_ask() {
   read -p "Continue? [y/N] " answer
   [[ $answer == "y" ]] || return 0
   echo
-  transfer "$@"
+  _rsync "$@"
 }
 
-transfer_enc() {
+_rsync_enc() {
   local key src dest mount result
   key=$1
   src=$2
@@ -124,7 +156,7 @@ transfer_enc() {
   result=$?
   if [[ $result -eq 0 ]]; then
     # Trailing / is important to transfer contents and not directory
-    transfer --delete "$mount/" "$dest"
+    _rsync --delete "$mount/" "$dest"
     result=$?
     fusermount -u "$mount"
   fi
