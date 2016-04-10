@@ -38,7 +38,7 @@ check() {
 
 copy() {
   local file
-  rsync -a /boot/{config,initrd.img,System.map,vmlinuz}-* .
+  rsync -rlpt /boot/{config,initrd.img,System.map,vmlinuz}-* .
   for file in {config,initrd.img,System.map,vmlinuz}-*; do
     if [[ ! -f "/boot/$file" ]]; then
       rm -vf "$file"
