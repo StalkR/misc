@@ -156,7 +156,8 @@ _rsync_enc() {
   result=$?
   if [[ $result -eq 0 ]]; then
     # Trailing / is important to transfer contents and not directory
-    _rsync --delete "$mount/" "$dest"
+    # Also transfer the metadata, it contains the key needed for mount.
+    _rsync --delete "$mount/" "$src/.encfs6.xml" "$dest"
     result=$?
     fusermount -u "$mount"
   fi
