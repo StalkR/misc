@@ -59,9 +59,11 @@ Put in your `.ssh/rc`:
 
     # sshd(8) says if no ~/.ssh/rc, xauth is run; so we have to do it ourselves.
     if read proto cookie && [ -n "$DISPLAY" ]; then
-      if [ "${DISPLAY:0:10}" = "localhost:" ]; then
+      part1=$(echo "$DISPLAY" | cut -d: -f1)
+      part2=$(echo "$DISPLAY" | cut -d: -f2)
+      if [ "$part1" = "localhost" ]; then
         # sshd with X11UseLocalhost=yes
-        xauth -q add "unix:${DISPLAY:10}" "$proto" "$cookie"
+        xauth -q add "unix:$part2" "$proto" "$cookie"
       else
         # sshd with X11UseLocalhost=no
         xauth -q add "$DISPLAY" "$proto" "$cookie"
