@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 kvm \
   -name vm \
   -cpu kvm64 \
@@ -18,3 +18,5 @@ kvm \
   -vnc unix:vnc \
   -pidfile pid \
   -daemonize
+chgrp kvm {serial,vnc}
+chmod g+w {serial,vnc}
