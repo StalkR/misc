@@ -1,6 +1,6 @@
-= Serial to VM
+# Serial to VM
 
-== Linux
+## Linux
 
 Locally:
 
@@ -14,7 +14,7 @@ Remotely:
 socat FILE:`tty`,raw,echo=0 'EXEC:"ssh <host> socat - UNIX:<serial>"'
 ```
 
-== Windows
+## Windows
 
 Create a shortcut to mintty, then use socat like for Linux.
 
