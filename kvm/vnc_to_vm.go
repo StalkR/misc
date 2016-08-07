@@ -33,7 +33,7 @@ import (
 
 var (
 	flagHost   = flag.String("host", "", "Host to SSH to (user@host[:port]).")
-	flagSocket = flag.String("socket", "", "Target VNC.")
+	flagSocket = flag.String("socket", "", "Path to remote VNC socket.")
 	flagViewer = flag.String("viewer", `C:\Program Files\TightVNC\tvnviewer.exe`, "Path to local TightVNC viewer.")
 	flagCygwin = flag.String("cygwin", `C:\cygwin64`, "Path to cygwin root (for SSH agent and socat).")
 )
@@ -91,10 +91,11 @@ func sshToVNC(user, host, socket string) (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	socket = strings.Replace(socket, `"`, `\"`, -1)
-	socket = strings.Replace(socket, `'`, `'"'"'`, -1)
+	if strings.Contains(socket, `"`) || strings.Contains(socket, `'`) {
+		return nil, fmt.Errorf("invalid socket path")
+	}
 	if err := session.Start(fmt.Sprintf(`socat 'UNIX:"%s"' -`, socket)); err != nil {
-		return nil, fmt.Errorf("cannot connect to remote vnc: %v", err)
+		return nil, err
 	}
 	fmt.Println("[+] Connected to remote VNC")
 	return &ReadWriteCloser{ioutil.NopCloser(stdout), stdin}, nil
