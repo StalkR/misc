@@ -161,7 +161,7 @@ lvm_dev() {
       fi
     done < <(kpartx -l /dev/$vg/$lv-snap)
     if [[ -n "$dev" ]]; then
-      if kpartx -a /dev/$vg/$lv-snap; then
+      if kpartx -a -s /dev/$vg/$lv-snap; then
         if mkdir -p /mnt/snap; then
           if mount -o ro /dev/mapper/$dev /mnt/snap; then
             "$cmd" "$name" "$@"
@@ -174,7 +174,7 @@ lvm_dev() {
         else
           result=$?
         fi
-        kpartx -d /dev/$vg/$lv-snap
+        kpartx -d -s /dev/$vg/$lv-snap
       else
         result=$?
       fi
