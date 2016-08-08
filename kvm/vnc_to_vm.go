@@ -10,6 +10,9 @@ Binary vnc_to_vm connects VNC to a remote VM via its socket file over SSH.
 Requirements:
 - cygwin, with ssh and socat installed, ssh-agent running
 - socat on the destination, TightVNC viewer locally
+
+To avoid opening a command window:
+  go build -ldflags "-H windowsgui" vnc_to_vm.go
 */
 
 package main
