@@ -65,11 +65,12 @@ func launch() error {
 	return vncViewer(remote)
 }
 
-func sshToVNC(user, host, socket string) (io.ReadWriteCloser, error) {
+func sshToVNC(user, host, socket string) (ReadWriteCloseWaiter, error) {
 	agentc, err := connectAgent()
 	if err != nil {
 		return nil, err
 	}
+	defer agentc.Wait()
 	defer agentc.Close()
 	config := &ssh.ClientConfig{
 		User: user,
@@ -101,10 +102,10 @@ func sshToVNC(user, host, socket string) (io.ReadWriteCloser, error) {
 		return nil, err
 	}
 	fmt.Println("[+] Connected to remote VNC")
-	return &ReadWriteCloser{ioutil.NopCloser(stdout), stdin}, nil
+	return &RWCWaiter{ioutil.NopCloser(stdout), stdin, session}, nil
 }
 
-func connectAgent() (io.ReadWriteCloser, error) {
+func connectAgent() (ReadWriteCloseWaiter, error) {
 	matches, err := filepath.Glob(*flagCygwin + `\tmp\ssh-*\agent.*`)
 	if err != nil {
 		return nil, err
@@ -129,10 +130,10 @@ func connectAgent() (io.ReadWriteCloser, error) {
 		return nil, err
 	}
 	fmt.Println("[+] Connected to SSH agent")
-	return &ReadWriteCloser{stdout, stdin}, nil
+	return &RWCWaiter{stdout, stdin, cmd}, nil
 }
 
-func vncViewer(remote io.ReadWriteCloser) error {
+func vncViewer(remote ReadWriteCloseWaiter) error {
 	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return err
@@ -151,21 +152,52 @@ func vncViewer(remote io.ReadWriteCloser) error {
 		return err
 	}
 	fmt.Println("[+] VNC viewer connected")
-	go io.Copy(remote, local)
-	go io.Copy(local, remote)
-	return cmd.Wait()
+	done := make(chan struct{})
+	cp := func(dst io.Writer, src io.Reader) {
+		io.Copy(dst, src)
+		done <- struct{}{}
+	}
+	go cp(remote, local)
+	go cp(local, remote)
+	go func() {
+		cmd.Wait()
+		done <- struct{}{}
+	}()
+	go func() {
+		remote.Wait()
+		done <- struct{}{}
+	}()
+	<-done
+	return nil
 }
 
-// ReadWriteCloser implements io.ReadWriteCloser.
-type ReadWriteCloser struct {
+type Waiter interface {
+	Wait() error
+}
+
+type ReadWriteCloseWaiter interface {
+	io.Reader
+	io.Writer
+	io.Closer
+	Waiter
+}
+
+// RWCWaiter implements io.ReadWriteCloser and Waiter.
+type RWCWaiter struct {
 	io.ReadCloser
 	io.WriteCloser
+	Waiter
 }
 
 // Close closes both the reader and writer.
-func (s *ReadWriteCloser) Close() error {
+func (s *RWCWaiter) Close() error {
 	if err := s.ReadCloser.Close(); err != nil {
 		return err
 	}
 	return s.WriteCloser.Close()
+}
+
+// Wait waits for the waiter.
+func (s *RWCWaiter) Wait() error {
+	return s.Waiter.Wait()
 }
