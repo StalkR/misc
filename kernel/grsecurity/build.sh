@@ -1,7 +1,10 @@
 #!/bin/bash
-# Get & build grsec - last tested with 4.3.3
+# Get & build grsec - last tested with 4.9.24
 # For the script to work, be sure you already have successfully done the process
 # manually once (added pgp keys, installed gcc plugins, etc).
+# See also:
+# - https://github.com/linux-scraping/linux-grsecurity
+# - https://github.com/parazyd/grsecurity-scrape/
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -12,14 +15,14 @@ fail() {
 
 [ -z "$BASH_VERSION" ] && fail "need bash"
 
-GRSEC=$(curl http://grsecurity.net/test.php)
+GRSEC=$(curl "http://grsecurity.net/~spender/")
 [ -n "$GRSEC" ] || fail "get grsecurity page"
 
-PATCH=$(echo "$GRSEC" | grep -o 'test/grsecurity-[.0-9]*-[.0-9]*-[0-9]*\.patch' | sort -ru | head -n 1 | cut -c6-)
+PATCH=$(echo "$GRSEC" | grep -o 'grsecurity-[.0-9]*-[.0-9]*-[0-9]*\.patch' | sort -ru | head -n 1)
 [ -n "$PATCH" ] || fail "parse patch file from grsec page"
 
-wget -c "http://grsecurity.net/test/$PATCH" || fail "get $PATCH"
-wget -c "http://grsecurity.net/test/$PATCH.sig" || fail "get $PATCH.sig"
+wget -c "http://grsecurity.net/~spender/$PATCH" || fail "get $PATCH"
+wget -c "http://grsecurity.net/~spender/$PATCH.sig" || fail "get $PATCH.sig"
 gpg --verify "$PATCH.sig" || fail "wrong $PATCH signature"
 
 KVER=$(echo "$PATCH" | sed 's/^grsecurity-[0-9.]\+-\([0-9.]\+\)-[0-9]\+\.patch/\1/')
@@ -54,9 +57,10 @@ patch -p1 < "../$PATCH" || fail "apply $PATCH"
 
 echo
 echo "Configure..."
-CONFIG=$(echo ../config-* | tr ' ' '\n' \
+CONFIG=$(cd ..; echo config-* | tr ' ' '\n' \
   | sed 's/^config-//;s/-grsec$//' | sort -r | head -n 1)
-[ -n "$CONFIG" ] || fail "no config file"
+CONFIG="../config-${CONFIG}-grsec"
+[ -r "$CONFIG" ] || fail "no config file"
 cp "$CONFIG" .config
 # Using old config
 if [ "$CONFIG" != "../config-$KVER-grsec" ]; then
@@ -70,10 +74,7 @@ echo "Clean..."
 make-kpkg clean
 echo
 echo "Build..."
-# Use KCONFIG_OVERWRITECONFIG to avoid scripts/kconfig/conf creating .config.old
-# but still for some reason it ends up in the .deb as /boot/config-xxx.old :(
-time KCONFIG_OVERWRITECONFIG=1 \
-  CONCURRENCY_LEVEL=$(grep '^processor' /proc/cpuinfo | wc -l) \
+time CONCURRENCY_LEVEL=$(grep '^processor' /proc/cpuinfo | wc -l) \
   make-kpkg \
   --rootcmd fakeroot \
   --initrd \
