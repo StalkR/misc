@@ -5,10 +5,9 @@
 # rsync remote shell to use, useful to set ssh options
 declare -r RSH='ssh -i /mnt/nas/ssh.key'
 
-# Sync: log <name> <action>
-# Actions:
-# - transfer|transfer_ask [options] <orig> [<orig> ...] <dest>
-# - transfer_enc <key> <orig> <dest>
+# Sync actions:
+# - transfer|transfer_ask <name> <orig> <dest>
+# - transfer_enc <name> <key> <orig> <dest>
 sync() {
   # Ensure directories are there (e.g. mounted)
   check_exists '/mnt/nas/backups'
@@ -156,7 +155,7 @@ _rsync_enc() {
   result=$?
   if [[ $result -eq 0 ]]; then
     # Trailing / is important to transfer contents and not directory
-    # Also transfer the metadata, it contains the key needed for mount.
+    # Also transfer the metadata, it contains the key needed for mount
     _rsync --delete "$mount/" "$src/.encfs6.xml" "$dest"
     result=$?
     fusermount -u "$mount"
