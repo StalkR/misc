@@ -19,6 +19,7 @@ import (
 var address = flag.String("listen", ":1337", "Address to listen on ([ip]:port).")
 
 func main() {
+        flag.Parse()
 	ln, err := net.Listen("tcp", *address)
 	if err != nil {
 		log.Fatal(err)

@@ -18,6 +18,8 @@ import (
 var address = flag.String("connect", ":1337", "Address to connect to ([ip]:port).")
 
 func main() {
+        flag.Parse()
+
 	conn, err := net.Dial("tcp", *address)
 	if err != nil {
 		log.Fatalf("connection error: %v", err)
