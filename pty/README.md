@@ -50,7 +50,8 @@ the tty data, so we need to multiplex some sort of control channel
 to send the window change event and window size information.
 
 Implemented at [server](src/ptyserver/server.go) and [client](src/ptyclient/client.go)
-Note this is a remote tty, not a reverse shell.
+
+Note: this is a remote tty, not a reverse shell.
 
 Add some TLS and you're not too far from SSH!
 We could even add port forwarding or file transfer, why not even inline using
