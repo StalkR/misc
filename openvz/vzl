@@ -153,7 +153,7 @@ physpages,physpages.l,swappages,swappages.l,diskspace,diskspace.s,diskspace.h)
 hn_memory() {
   local ram_used ram_total swap_used swap_total
   free=$(free -b)
-  ram_used=$(awk '$2=="buffers/cache:"{print $3}' <<< "$free")
+  ram_used=$(awk '$1=="Mem:"{print $3}' <<< "$free")
   ram_total=$(awk '$1=="Mem:"{print $2}' <<< "$free")
   swap_used=$(awk '$1=="Swap:"{print $3}' <<< "$free")
   swap_total=$(awk '$1=="Swap:"{print $2}' <<< "$free")
