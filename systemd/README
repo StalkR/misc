@@ -1,0 +1,8 @@
+init is here to clean zombies with waitpid()
+if it fails to do that, zombies pile up and it becomes
+impossible to stop and restart containers, for instance
+it worked fine for years, until systemd came and failed
+you had one job
+to solve this, the clean-zombies.sh script attaches to
+init and calls waitpid to all zombies
+sigh
