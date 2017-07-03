@@ -1,14 +1,13 @@
-# Remote TTY with terminal resize
+# Remote TTY with terminal resize (Linux)
 Code from post located at https://blog.stalkr.net/2015/12/from-remote-shell-to-remote-terminal.html
 
-## TLDR
+## TL;DR
 
-    # Execute from this 'pty' folder
-    GOPATH=$(pwd); GOBIN=$GOPATH/bin; go get ./...
-    # Server listen by default at ':1337'
-    bin/ptyserver [--listen [IP]:port]
-    # Client connects by default to ':1337'
-    bin/ptyclient [--connect [IP]:port]
+    go get github.com/StalkR/misc/pty
+    go build github.com/StalkR/misc/pty/server
+    ./server [--listen  [IP]:port] # default ':1337'
+    go build github.com/StalkR/misc/pty/client
+    ./client [--connect [IP]:port] # default ':1337'
 
 ## From simple reverse shell to remote tty and terminal resize
 
@@ -49,7 +48,7 @@ the `TIOCSWINSZ` `iotctl` counterpart. However the socket is taken for relaying
 the tty data, so we need to multiplex some sort of control channel
 to send the window change event and window size information.
 
-Implemented at [server](src/ptyserver/server.go) and [client](src/ptyclient/client.go)
+Implemented at [server](server/server.go) and [client](client/client.go)
 
 Note: this is a remote tty, not a reverse shell.
 
