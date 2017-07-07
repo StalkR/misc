@@ -11,7 +11,7 @@ $VERSION = "0.1";
     name        => 'active_unknown_command.pl',
     description => 'This script shows server "unknown commands" into the active window (dispatch.pl recommended).',
     license     => 'GNU General Public License',
-    url         => 'https://github.com/StalkR/misc/blob/master/irssi/active_unknown_command.pl',
+    url         => 'https://github.com/StalkR/misc/tree/master/irssi/scripts/active_unknown_command.pl',
     changed     => 'Fri Jan  7 13:51:06 CET 2011',
 );
 

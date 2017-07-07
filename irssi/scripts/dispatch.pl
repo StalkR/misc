@@ -4,10 +4,6 @@ use Irssi;
 use Irssi::Irc;
 use vars qw($VERSION %IRSSI);
 
-# renamed to "z-"dispatch to avoid scriptassist searching for a command:
-# >> Please wait...
-# << No script provides '/1'
-
 $VERSION = "0.0.3";
 %IRSSI = (
         authors     => "Sebastian 'yath' Schmidt, Tom Wesley",
@@ -22,7 +18,7 @@ sub event_default_command {
         my ($command, $server) = @_;
 
         if ($command =~ /^\d+$/) {
-                Irssi::command("window $command");
+                Irssi::command("window goto $command");
                 Irssi::signal_stop();
                 return;
         }
