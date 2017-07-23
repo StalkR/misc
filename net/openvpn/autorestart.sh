@@ -17,12 +17,12 @@ loop() {
   while sleep 10; do
     if ! alive "$1" "$2"; then
       logger -t "openvpn" "restart $3"
-      systemctl stop "openvpn@$3"
+      invoke-rc.d openvpn stop "$3"
       while ip link list dev "$1" >/dev/null 2>&1; do
         sleep 1
       done
       sleep 5
-      systemctl start "openvpn@$3"
+      invoke-rc.d openvpn start "$3"
       sleep 60
     fi
   done

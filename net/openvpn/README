@@ -2,7 +2,7 @@ Example VPN setup for vpn.example.com
 
 = Install
 aptitude install openvpn
-Debian wheezy openvpn 2.2.
+Debian stretch openvpn 2.4.
 adduser --system --home /var/run --shell /bin/false --no-create-home vpnexample
 cd /etc/openvpn
 
@@ -36,7 +36,6 @@ openssl ca -config "$KEY_CONFIG" -gencrl -out keys/crl.pem
 
 = Start server
 invoke-rc.d openvpn start [conf]
-(or systemctl openvpn[@conf] start)
 
 = Client configs
 Templates:
@@ -54,9 +53,6 @@ No need to reload OpenVPN as it reads CRL at every connection.
 = Static IP addressing
 echo 'user,192.168.0.6' >> ipp.txt
 invoke-rc.d openvpn reload
-(or systemctl reload openvpn[@conf], but be warned systemd
- has trouble understanding 'reload' and will just break
- your openvpn and you will have to restart openvpn)
 Note: it's a /30, and you can only address the second host.
 Example with 192.168.0.4/30:
  - 192.168.0.4 is netword address (unusable)
@@ -66,8 +62,7 @@ Example with 192.168.0.4/30:
 
 = IPv6
 == Server
-OpenVPN 2.2 only supports <= /64, if need bigger (e.g. /96) install 2.3 (e.g.
-download openvpn sources from debian/sid and build locally).
+OpenVPN 2.2 only supports <= /64, if need bigger (e.g. /96) install >= 2.3.
 Warning: ipp (ifconfig-pool-persist) not supported for IPv6 yet (TODO)
          so look at which IP is given to client.
 
