@@ -1,6 +1,5 @@
 """Burp base64 editor library to see and edit base64 data.
 
-This example library demonstrates how to make a Burp editor extension.
 The Request/Response extend classes from the http library which does the
 parsing for us so we can focus on the extension logic.
 """

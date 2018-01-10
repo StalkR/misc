@@ -1,8 +1,7 @@
 """Tests for Burp base64 editor library.
 
-This demonstrates the power of unit tests to test your extension with real
-traffic examples: it saves a lot of time compared to developing directly in
-burp and reloading the extension every time, which takes time with Jython.
+These unit tests allow us to test the extension outside of burp and iterate
+faster compared to reloading the extension in Burp, slow with Jython.
 """
 
 import b64

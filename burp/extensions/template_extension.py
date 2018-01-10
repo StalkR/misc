@@ -1,4 +1,4 @@
-"""Burp editor extension example.
+"""Burp editor extension template.
 
 The only thing you need to change is CHANGEME in the import line.
 
