@@ -19,8 +19,8 @@ class TestRequest(unittest.TestCase):
 
   def testNoHeaders(self):
     s = 'POST / HTTP/1.0\r\n\r\nbody'
-    req = http.Request.Parse(s)
-    self.assertEqual(s, req.String())
+    r = http.Request.Parse(s)
+    self.assertEqual(s, r.String())
 
 
 
@@ -38,8 +38,16 @@ class TestResponse(unittest.TestCase):
 
   def testNoHeaders(self):
     s = 'HTTP/1.1 200 OK\r\n\r\nbody'
-    req = http.Request.Parse(s)
-    self.assertEqual(s, req.String())
+    r = http.Response.Parse(s)
+    self.assertEqual(s, r.String())
+
+  def testContinue(self):
+    s = 'HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\n\r\nbody'
+    r = http.Response.Parse(s)
+    self.assertEqual('body', r.Body)
+    s = 'HTTP/1.1 100 Continue\r\n\r\n'*2 + 'HTTP/1.1 200 OK\r\n\r\nbody'
+    r = http.Response.Parse(s)
+    self.assertEqual('body', r.Body)
 
 
 class TestHeaders(unittest.TestCase):

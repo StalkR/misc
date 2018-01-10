@@ -169,6 +169,8 @@ class Values(object):
 
 def parse(m):
   """parse parses an HTTP message into 3 parts: first line, headers, body."""
+  while m.startswith('HTTP/1.1 100 Continue\r\n'):
+    m = m[m.find('\r\n\r\n')+4:]
   p = m.find('\r\n')
   if p == -1:
     return
