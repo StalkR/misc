@@ -10,7 +10,7 @@ import zlib
 import http
 
 # Extension name and tab title
-NAME = 'Zlib editor'
+NAME = 'Zlib tab'
 TITLE = 'Zlib'
 
 

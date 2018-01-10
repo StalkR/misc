@@ -4,13 +4,13 @@ from burp import IBurpExtender
 from burp import IMessageEditorTabFactory
 from burp import IMessageEditorTab
 
-import zlibedit as editor
+import zlibtab as editor
 
 
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
 
   def registerExtenderCallbacks(self, callbacks):
-    self._callbacks = callbacks
+    self.callbacks = callbacks
     callbacks.setExtensionName(editor.NAME)
     callbacks.registerMessageEditorTabFactory(self)
 

@@ -10,7 +10,7 @@ import b64 as editor
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
 
   def registerExtenderCallbacks(self, callbacks):
-    self._callbacks = callbacks
+    self.callbacks = callbacks
     callbacks.setExtensionName(editor.NAME)
     callbacks.registerMessageEditorTabFactory(self)
 
