@@ -2,6 +2,7 @@
 
 Using, as of 2019-04-16:
 
+* a free Spotify account (not premium)
 * [Raspberry Pi 3 Model B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/)
 * [Raspbian](https://www.raspbian.org/) GNU/Linux 9.8 (stretch)
 * `chromium-browser` package version `72.0.3626.121-0+rp`
@@ -18,7 +19,8 @@ and put it in `/usr/lib/chromium-browser`.
 
 Notes:
 
-* the script also fetches `libpepflashplayer.so` but it is not needed
+* the script also fetches `libpepflashplayer.so` but it is not needed to replace it,
+  as Chromium already has it, Spotify does not use Flash anymore, and Flash is deprecated anyway
 * on 2019-04-16 I had md5 `4946f3c49c7ce5cd129e66c61aab28a4` for `libwidevinecdm.so`
 
 ## Failed attempts
@@ -34,3 +36,9 @@ Raspbian & Debian Chromium packages are actually different:
 on Debian it is `chromium` while on Raspbian it is `chromium-browser`.
 I tried adding Debian repositories and installing `chromium` but it fails to even start,
 so I think messing up with the repos might not be recommended and could break your Raspbian - be careful.
+
+[Spotify for Linux](https://www.spotify.com/ch-de/download/linux/)
+only supports `amd64` not `armhf`.
+
+Alternative clients like [raspotify](https://github.com/dtcooper/raspotify)
+do not work with free Spotify accounts and require premium.
