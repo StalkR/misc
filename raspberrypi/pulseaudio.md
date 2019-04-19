@@ -57,8 +57,10 @@ latency spike.
 
 ## Windows
 
-I am still exploring how to make it work from Windows sound clients,
-with promising solutions like
-[scream](https://github.com/duncanthrax/scream) or
-[WLStream](https://github.com/rsegecin/WLStream).
-To be continued...
+Compiled [WLStream](https://github.com/rsegecin/WLStream) and it works great.
+From `cmd.exe` via a batch file, using
+[cygwin](https://www.cygwin.com/) ssh:
+`WLStream.exe | ssh server "pacat -p --format float32le"`.
+
+Another solution could be [scream](https://github.com/duncanthrax/scream)
+but I did not try.
