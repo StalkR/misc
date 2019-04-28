@@ -1,4 +1,4 @@
-// +build windows,!linux,!darwin
+// +build windows
 
 /*
 Binary vnc_to_vm connects VNC to a remote VM via its socket file over SSH.
@@ -12,24 +12,22 @@ Requirements:
 - socat on the destination, TightVNC viewer locally
 
 To avoid opening a command window:
-  go build -ldflags "-H windowsgui" vnc_to_vm.go
+  go build -ldflags -H=windowsgui vnc_to_vm.go
 */
 
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"net"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/StalkR/misc/windows/cygwin"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -38,14 +36,12 @@ var (
 	flagHost   = flag.String("host", "", "Host to SSH to (user@host[:port]).")
 	flagSocket = flag.String("socket", "", "Path to remote VNC socket.")
 	flagViewer = flag.String("viewer", `C:\Program Files\TightVNC\tvnviewer.exe`, "Path to local TightVNC viewer.")
-	flagCygwin = flag.String("cygwin", `C:\cygwin64`, "Path to cygwin root (for SSH agent and socat).")
 )
 
 func main() {
 	flag.Parse()
 	if err := launch(); err != nil {
-		fmt.Printf("Error: %v\n\n[press enter to exit]", err)
-		bufio.NewScanner(os.Stdin).Scan()
+		log.Fatal(err)
 	}
 }
 
@@ -58,146 +54,101 @@ func launch() error {
 	if len(userHost) == 0 {
 		return fmt.Errorf("invalid host")
 	}
-	remote, err := sshToVNC(userHost[1], userHost[2], *flagSocket)
+	user, host := userHost[1], userHost[2]
+	if strings.Contains(*flagSocket, `"`) || strings.Contains(*flagSocket, `'`) {
+		return fmt.Errorf("invalid socket path")
+	}
+	socket := *flagSocket
+
+	vnc, err := vncViewer()
 	if err != nil {
 		return err
 	}
-	return vncViewer(remote)
+	defer vnc.Close()
+	return sshToVNC(user, host, socket, vnc)
 }
 
-func sshToVNC(user, host, socket string) (ReadWriteCloseWaiter, error) {
-	agentc, err := connectAgent()
-	if err != nil {
-		return nil, err
-	}
-	defer agentc.Wait()
-	defer agentc.Close()
-	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeysCallback(agent.NewClient(agentc).Signers),
-		},
-	}
-	client, err := ssh.Dial("tcp", host, config)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("[+] Connected to remote SSH server")
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-	stdin, err := session.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-	stdout, err := session.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	if strings.Contains(socket, `"`) || strings.Contains(socket, `'`) {
-		return nil, fmt.Errorf("invalid socket path")
-	}
-	if err := session.Start(fmt.Sprintf(`socat 'UNIX:"%s"' -`, socket)); err != nil {
-		return nil, err
-	}
-	fmt.Println("[+] Connected to remote VNC")
-	return &RWCWaiter{ioutil.NopCloser(stdout), stdin, session}, nil
-}
-
-func connectAgent() (ReadWriteCloseWaiter, error) {
-	matches, err := filepath.Glob(*flagCygwin + `\tmp\ssh-*\agent.*`)
-	if err != nil {
-		return nil, err
-	}
-	if len(matches) == 0 {
-		return nil, fmt.Errorf("agent not found")
-	}
-	if len(matches) > 1 {
-		return nil, fmt.Errorf("multiple agents found")
-	}
-	path := strings.Replace(strings.TrimPrefix(matches[0], *flagCygwin), `\`, `/`, -1)
-	cmd := exec.Command(*flagCygwin+`\bin\socat`, fmt.Sprintf("UNIX:%s", path), "-")
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-	fmt.Println("[+] Connected to SSH agent")
-	return &RWCWaiter{stdout, stdin, cmd}, nil
-}
-
-func vncViewer(remote ReadWriteCloseWaiter) error {
+func vncViewer() (io.ReadWriteCloser, error) {
 	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
 	cmd := exec.Command(*flagViewer, fmt.Sprintf("localhost::%d", port))
 	if err := cmd.Start(); err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Println("[+] VNC viewer started")
-	local, err := ln.Accept()
+	conn, err := ln.Accept()
 	if err != nil {
-		return err
+		cmd.Wait()
+		return nil, err
 	}
 	if err := ln.Close(); err != nil {
-		return err
-	}
-	fmt.Println("[+] VNC viewer connected")
-	done := make(chan struct{})
-	cp := func(dst io.Writer, src io.Reader) {
-		io.Copy(dst, src)
-		done <- struct{}{}
-	}
-	go cp(remote, local)
-	go cp(local, remote)
-	go func() {
 		cmd.Wait()
-		done <- struct{}{}
-	}()
-	go func() {
-		remote.Wait()
-		done <- struct{}{}
-	}()
-	<-done
+		return nil, err
+	}
+	log.Printf("VNC viewer connected (localhost:%v)", port)
+	return &vncConn{conn, cmd}, nil
+}
+
+// vncConn implements io.ReadWriteCloser.
+type vncConn struct {
+	conn io.ReadWriteCloser
+	cmd  *exec.Cmd
+}
+
+func (s *vncConn) Read(p []byte) (int, error)  { return s.conn.Read(p) }
+func (s *vncConn) Write(p []byte) (int, error) { return s.conn.Write(p) }
+func (s *vncConn) Close() error {
+	var errors []error
+	if err := s.conn.Close(); err != nil {
+		errors = append(errors, err)
+	}
+	if err := s.cmd.Wait(); err != nil {
+		errors = append(errors, err)
+	}
+	if len(errors) > 0 {
+		if len(errors) == 1 {
+			return errors[0]
+		}
+		return fmt.Errorf("close: %v errors, first: %v", len(errors), errors[0])
+	}
 	return nil
 }
 
-type Waiter interface {
-	Wait() error
-}
-
-type ReadWriteCloseWaiter interface {
-	io.Reader
-	io.Writer
-	io.Closer
-	Waiter
-}
-
-// RWCWaiter implements io.ReadWriteCloser and Waiter.
-type RWCWaiter struct {
-	io.ReadCloser
-	io.WriteCloser
-	Waiter
-}
-
-// Close closes both the reader and writer.
-func (s *RWCWaiter) Close() error {
-	if err := s.ReadCloser.Close(); err != nil {
+func sshToVNC(user, host, socket string, vnc io.ReadWriter) error {
+	client, err := connect(user, host)
+	if err != nil {
 		return err
 	}
-	return s.WriteCloser.Close()
+	defer client.Close()
+	log.Print("Connected to SSH server")
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	session.Stdin = vnc
+	session.Stdout = vnc
+	if err := session.Start(fmt.Sprintf(`socat 'UNIX:"%s"' -`, socket)); err != nil {
+		return err
+	}
+	log.Print("Connected to VNC via SSH")
+	return session.Wait()
 }
 
-// Wait waits for the waiter.
-func (s *RWCWaiter) Wait() error {
-	return s.Waiter.Wait()
+func connect(user, host string) (*ssh.Client, error) {
+	ag, err := cygwin.SSHAgent()
+	if err != nil {
+		return nil, err
+	}
+	defer ag.Close()
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeysCallback(agent.NewClient(ag).Signers),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+	return ssh.Dial("tcp", host, config)
 }
