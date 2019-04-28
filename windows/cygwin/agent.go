@@ -1,3 +1,5 @@
+// +build windows
+
 // Package cygwin implements various Cygwin things, e.g. connecting to an ssh-agent.
 package cygwin
 

@@ -1,6 +1,10 @@
-// Binary winpulse captures Audio from Windows and streams it to a PulseAudio server.
-// It shows in systray with PulseAudio icon, right-click to exit.
-// Build with `-ldflags -H=windowsgui` to avoid launching a console window.
+// +build windows
+
+/*
+Binary winpulse captures Audio from Windows and streams it to a PulseAudio server.
+It shows in systray with PulseAudio icon, right-click to exit.
+Build with `-ldflags -H=windowsgui` to avoid launching a console window.
+*/
 package main
 
 import (

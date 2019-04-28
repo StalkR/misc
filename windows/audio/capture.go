@@ -1,3 +1,5 @@
+// +build windows
+
 // Package audio implements audio capture on Windows.
 package audio
 
