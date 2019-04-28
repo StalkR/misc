@@ -2,20 +2,27 @@
 package cygwin
 
 import (
-  "flag"
   "fmt"
   "io"
   "os/exec"
   "path/filepath"
   "strings"
-)
 
-// TODO: find this dynamically
-var flagCygwinRoot = flag.String("cygwin_root", `C:\cygwin64`, "Path to cygwin root (for SSH agent and socat).")
+  "golang.org/x/sys/windows/registry"
+)
 
 // SSHAgent connects to a running ssh-agent unix socket.
 func SSHAgent() (io.ReadWriteCloser, error) {
-  matches, err := filepath.Glob(*flagCygwinRoot + `\tmp\ssh-*\agent.*`)
+  k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Cygwin\setup`, registry.QUERY_VALUE)
+  if err != nil {
+    return nil, err
+  }
+  defer k.Close()
+  cygwin, _, err := k.GetStringValue("rootdir")
+  if err != nil {
+    return nil, err
+  }
+  matches, err := filepath.Glob(cygwin + `\tmp\ssh-*\agent.*`)
   if err != nil {
     return nil, err
   }
@@ -25,10 +32,10 @@ func SSHAgent() (io.ReadWriteCloser, error) {
   if len(matches) > 1 {
     return nil, fmt.Errorf("multiple agents found")
   }
-  path := strings.Replace(strings.TrimPrefix(matches[0], *flagCygwinRoot), `\`, `/`, -1)
+  path := strings.Replace(strings.TrimPrefix(matches[0], cygwin), `\`, `/`, -1)
   // windows does not know how to connect to a cygwin UNIX socket,
   // so we use socat to convert it to a standard input/output.
-  cmd := exec.Command(*flagCygwinRoot+`\bin\socat`, fmt.Sprintf("UNIX:%s", path), "-")
+  cmd := exec.Command(cygwin+`\bin\socat`, fmt.Sprintf("UNIX:%s", path), "-")
   stdin, err := cmd.StdinPipe()
   if err != nil {
     return nil, err
