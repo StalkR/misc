@@ -1,20 +1,21 @@
 // Binary winpulse captures Audio from Windows and streams it to a PulseAudio server over SSH.
+// It shows in systray with PulseAudio icon, right-click to exit.
+// Build with `-ldflags -H=windowsgui` to avoid launching a console window.
 package main
 
 import (
-  "bufio"
   "context"
   "errors"
   "flag"
-  "fmt"
   "io"
   "log"
-  "os"
   "regexp"
   "time"
 
+  "github.com/StalkR/misc/pulseaudio/icon"
   "github.com/StalkR/misc/windows/audio"
   "github.com/StalkR/misc/windows/cygwin"
+  "github.com/getlantern/systray"
   "golang.org/x/crypto/ssh"
   "golang.org/x/crypto/ssh/agent"
   "golang.org/x/sync/errgroup"
@@ -23,26 +24,40 @@ import (
 var flagServer = flag.String("server", "", "PulseAudio server to connect to via SSH + pacat (user@host[:port]).")
 
 func main() {
+  ctx := context.Background()
   flag.Parse()
-  if err := launch(context.Background()); err != nil {
+  if *flagServer == "" {
+    flag.PrintDefaults()
+    return
+  }
+  userHost := regexp.MustCompile(`^([^@]*)@(.*)$`).FindStringSubmatch(*flagServer)
+  if len(userHost) == 0 {
+    log.Fatal("invalid host")
+  }
+  user, host := userHost[1], userHost[2]
+
+  ctx, cancel := context.WithCancel(ctx)
+  systray.Run(func() { onReady(ctx, user, host) }, cancel)
+}
+
+func onReady(ctx context.Context, user, host string) {
+  systray.SetIcon(icon.Data)
+  systray.SetTitle("WinPulse")
+  exit := systray.AddMenuItem("Exit", "Exit")
+  go func() {
+    <-exit.ClickedCh
+    systray.Quit()
+  }()
+  if err := launch(ctx, user, host); err != nil {
     log.Fatal(err)
   }
 }
 
-func launch(ctx context.Context) error {
-  if *flagServer == "" {
-    flag.PrintDefaults()
-    return nil
-  }
-  userHost := regexp.MustCompile(`^([^@]*)@(.*)$`).FindStringSubmatch(*flagServer)
-  if len(userHost) == 0 {
-    return fmt.Errorf("invalid host")
-  }
-
+func launch(ctx context.Context, user, host string) error {
+  gui := ctx
   g, ctx := errgroup.WithContext(ctx)
   g.Go(func() error {
-    log.Print("Press enter to stop")
-    bufio.NewScanner(os.Stdin).Scan()
+    <-gui.Done()
     return errStop
   })
 
@@ -55,7 +70,8 @@ func launch(ctx context.Context) error {
   g.Go(func() error {
     defer r.Close()
     for ; ; time.Sleep(time.Second) {
-      if err := play(userHost[1], userHost[2], r); err != nil && err != io.EOF {
+      systray.SetTooltip("Connecting to PulseAudio...")
+      if err := play(user, host, r); err != nil && err != io.EOF {
         log.Printf("error: %v", err)
       }
       select {
@@ -89,6 +105,7 @@ func play(user, host string, stream io.Reader) error {
     return err
   }
   log.Print("Connected to PulseAudio")
+  systray.SetTooltip("Connected to PulseAudio")
   return session.Wait()
 }
 
