@@ -95,11 +95,13 @@ func play(user, host string, stream io.Reader) error {
   if err != nil {
     return err
   }
+  defer client.Close()
   log.Print("Connected to server")
   session, err := client.NewSession()
   if err != nil {
     return err
   }
+  defer session.Close()
   session.Stdin = stream
   if err := session.Start("pacat -p --format float32le"); err != nil {
     return err
