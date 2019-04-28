@@ -36,7 +36,6 @@ func Play(ctx context.Context, server io.ReadWriter, stream io.Reader) error {
       return err
     }
   }
-  return nil
 }
 
 func pulseWritePacket(w io.Writer, index uint32, data []byte) error {
