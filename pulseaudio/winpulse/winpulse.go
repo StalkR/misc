@@ -1,41 +1,56 @@
 // Binary winpulse captures Audio from Windows and streams it to a PulseAudio server.
+// It shows in systray with PulseAudio icon, right-click to exit.
+// Build with `-ldflags -H=windowsgui` to avoid launching a console window.
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"io"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/StalkR/misc/pulseaudio"
+	"github.com/StalkR/misc/pulseaudio/icon"
 	"github.com/StalkR/misc/windows/audio"
+	"github.com/getlantern/systray"
 	"golang.org/x/sync/errgroup"
 )
 
 var flagServer = flag.String("server", "", "PulseAudio server to connect to (host:port).")
 
 func main() {
+	ctx := context.Background()
 	flag.Parse()
-	if err := launch(context.Background()); err != nil {
+	if *flagServer == "" {
+		flag.PrintDefaults()
+		return
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	systray.Run(func() { onReady(ctx, *flagServer) }, cancel)
+}
+
+func onReady(ctx context.Context, server string) {
+	systray.SetIcon(icon.Data)
+	systray.SetTitle("WinPulse")
+	exit := systray.AddMenuItem("Exit", "Exit")
+	go func() {
+		<-exit.ClickedCh
+		systray.Quit()
+	}()
+	if err := launch(ctx, server); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func launch(ctx context.Context) error {
-	if *flagServer == "" {
-		flag.PrintDefaults()
-		return nil
-	}
-
+func launch(ctx context.Context, server string) error {
+	gui := ctx
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		log.Print("Press enter to stop")
-		bufio.NewScanner(os.Stdin).Scan()
+		<-gui.Done()
 		return errStop
 	})
 
@@ -48,7 +63,8 @@ func launch(ctx context.Context) error {
 	g.Go(func() error {
 		defer r.Close()
 		for ; ; time.Sleep(time.Second) {
-			if err := play(ctx, *flagServer, r); err != nil && err != io.EOF {
+			systray.SetTooltip("Connecting to PulseAudio...")
+			if err := play(ctx, server, r); err != nil && err != io.EOF {
 				log.Printf("error: %v", err)
 			}
 			select {
@@ -74,5 +90,6 @@ func play(ctx context.Context, server string, stream io.Reader) error {
 	}
 	defer conn.Close()
 	log.Print("Connected to PulseAudio")
+	systray.SetTooltip("Connected to PulseAudio")
 	return pulseaudio.Play(ctx, conn, stream)
 }
