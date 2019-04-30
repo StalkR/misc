@@ -39,18 +39,15 @@ What worked for me is the TCP module with Zeroconf (Avahi).
 
 ## Windows
 
-I created my own solutions in Go:
-
-* [`winpulse`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse)
+I created my own solution in Go:
+[`winpulse`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse)
 captures local Windows Audio and sends it to a PulseAudio server using the
 native protocol like other Linux clients, with anonymous authentication.
-
-* [`winpulsessh`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulsessh)
-captures local Windows Audio and sends it to a PulseAudio server using SSH,
+It also supports sending over SSH by running `pacat` on the server,
 which can be useful if you do not want to expose the PulseAudio server on
 the network or if going through SSH hops.
 
-using these small libraries:
+It uses these small libraries:
 
 * [`github.com/StalkR/misc/windows/audio`](https://godoc.org/github.com/StalkR/misc/windows/audio)
   to capture local audio on Windows
@@ -83,9 +80,7 @@ then from `cmd.exe` stream it via ssh
 (e.g. `WLStream.exe | ssh server "pacat -p --format float32le"`).
 It works but has stutters every minute, probably because of the
 pipe to ssh, so I made my own
-([`winpulse`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse/winpulse.go) direc
-and
-[`winpulsessh`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulsessh/winpulsessh.go)).
+([`winpulse`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse/winpulse.go)).
 
 Another Windows solution could have been [scream](https://github.com/duncanthrax/scream)
 but I did not try as it requires its own receiver on the server.
