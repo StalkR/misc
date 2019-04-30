@@ -54,7 +54,6 @@ func main() {
 }
 
 func onReady(ctx context.Context) {
-	systray.SetIcon(icon.Data)
 	systray.SetTitle("WinPulse")
 	play := systray.AddMenuItem("Play", "Play")
 	play.Hide()
@@ -74,6 +73,7 @@ func onReady(ctx context.Context) {
 		g.Go(func() error {
 			return start(ctx)
 		})
+		systray.SetIcon(icon.Color)
 		stop.Show()
 		<-stop.ClickedCh
 		stop.Hide()
@@ -81,9 +81,10 @@ func onReady(ctx context.Context) {
 		if err := g.Wait(); err != nil {
 			log.Fatal(err)
 		}
-		play.Show()
 		log.Print("Stopped")
 		systray.SetTooltip("Stopped")
+		systray.SetIcon(icon.Gray)
+		play.Show()
 		<-play.ClickedCh
 		play.Hide()
 	}
