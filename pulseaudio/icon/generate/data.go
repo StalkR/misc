@@ -2,11 +2,13 @@
 package main
 
 import (
-	"bytes"
+	"compress/zlib"
+	"encoding/base64"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -25,18 +27,37 @@ func main() {
 }
 
 func launch() error {
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "package %s\n", *flagPkg)
-	fmt.Fprintln(&buf)
-	data, err := ioutil.ReadFile(*flagIn)
+	in, err := os.Open(*flagIn)
 	if err != nil {
 		return err
 	}
-	var hex []string
-	for _, b := range data {
-		hex = append(hex, fmt.Sprintf("0x%02x", b))
+	defer in.Close()
+	var encoded strings.Builder
+	encoder := base64.NewEncoder(base64.StdEncoding, &encoded)
+	w := zlib.NewWriter(encoder)
+	if _, err = io.Copy(w, in); err != nil {
+		return err
 	}
-	fmt.Fprintln(&buf, "// automatically generated")
-	fmt.Fprintf(&buf, "var %s = []byte{%s}\n", *flagVar, strings.Join(hex, ", "))
-	return ioutil.WriteFile(*flagOut, buf.Bytes(), 0644)
+	if err := w.Close(); err != nil {
+		return err
+	}
+	if err := encoder.Close(); err != nil {
+		return err
+	}
+	out, err := os.OpenFile(*flagOut, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, `package %s
+
+// %s contains the contents of: %s
+var %s []byte
+
+func init() {
+	%s = decode(zlib_%s)
+}
+
+const zlib_%s = "%s"
+`, *flagPkg, *flagVar, *flagIn, *flagVar, *flagVar, *flagVar, *flagVar, encoded.String())
+	return out.Close()
 }
