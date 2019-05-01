@@ -27,7 +27,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/StalkR/misc/windows/cygwin"
+	"github.com/StalkR/winpulse/cygwin"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
