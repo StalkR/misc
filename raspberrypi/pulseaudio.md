@@ -10,8 +10,7 @@ and your sound system (e.g. with a 3.5 mm stereo jack).
 The sound clients are just connected to the network:
 
 * a Linux computer also running PulseAudio
-* a Windows computer running
-  [winpulse](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse/winpulse.go)
+* a Windows computer running [winpulse](https://github.com/StalkR/winpulse)
 
 ## Setup
 
@@ -39,20 +38,16 @@ What worked for me is the TCP module with Zeroconf (Avahi).
 
 ## Windows
 
-I created my own solution in Go:
-[`winpulse`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse)
-captures local Windows Audio and sends it to a PulseAudio server using the
-native protocol like other Linux clients, with anonymous authentication.
-It also supports sending over SSH by running `pacat` on the server,
-which can be useful if you do not want to expose the PulseAudio server on
-the network or if going through SSH hops.
+I created [`winpulse`](https://github.com/StalkR/winpulse).
+It captures Windows Audio and streams it to a PulseAudio server using its
+native protocol or over SSH by running `pacat` on the server.
 
 It uses these small libraries:
 
-* [`github.com/StalkR/misc/windows/audio`](https://godoc.org/github.com/StalkR/misc/windows/audio)
+* [`github.com/StalkR/winpulse/winaudio`](https://godoc.org/github.com/StalkR/winpulse/winaudio)
   to capture local audio on Windows
-* [`github.com/StalkR/misc/pulseaudio`](https://godoc.org/github.com/StalkR/misc/pulseaudio)
-  to send audio using PulseAudio native protocol
+* [`github.com/StalkR/winpulse/pulseaudio`](https://godoc.org/github.com/StalkR/winpulse/pulseaudio)
+  to stream audio with PulseAudio native protocol
 
 ## Issues
 
@@ -79,8 +74,7 @@ For Windows I tried [WLStream](https://github.com/rsegecin/WLStream), compiled i
 then from `cmd.exe` stream it via ssh
 (e.g. `WLStream.exe | ssh server "pacat -p --format float32le"`).
 It works but has stutters every minute, probably because of the
-pipe to ssh, so I made my own
-([`winpulse`](https://github.com/StalkR/misc/blob/master/pulseaudio/winpulse/winpulse.go)).
+pipe to ssh.
 
 Another Windows solution could have been [scream](https://github.com/duncanthrax/scream)
 but I did not try as it requires its own receiver on the server.
