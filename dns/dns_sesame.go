@@ -5,7 +5,7 @@ It is useful against firewalls wanting a fixed set of domains and
 opening only on the IPs resolved.
 
 Example usage:
-        go run dnssesame.go -address :53 -suffix z.stalkr.net
+        go run dns_sesame.go -address :53 -suffix z.stalkr.net
 
 How it works:
 - choose a name ('test'), send a DNS request to set the IP
@@ -35,8 +35,8 @@ import (
 const TTL = 5 * time.Minute
 
 var (
-	flagAddress = flag.String("address", ":53", "Address to listen to (TCP and UDP)")
-	flagSuffix  = flag.String("suffix", "", "Suffix for DNS")
+	flagListen = flag.String("listen", ":53", "Address to listen to (TCP and UDP)")
+	flagSuffix = flag.String("suffix", "", "Suffix for DNS")
 )
 
 func init() {
@@ -57,8 +57,8 @@ func main() {
 	dns.HandleFunc(".", func(w dns.ResponseWriter, req *dns.Msg) {
 		handle(w, req, cache)
 	})
-	start(&dns.Server{Addr: *flagAddress, Net: "udp"})
-	start(&dns.Server{Addr: *flagAddress, Net: "tcp"})
+	start(&dns.Server{Addr: *flagListen, Net: "udp"})
+	start(&dns.Server{Addr: *flagListen, Net: "tcp"})
 	for ; ; time.Sleep(TTL) {
 		cache.GC()
 	}
