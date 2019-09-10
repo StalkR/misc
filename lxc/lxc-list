@@ -1,0 +1,157 @@
+#!/bin/bash
+# List LXC containers nicely by extending lxc-ls.
+
+main() {
+  if ! [[ -x "$(command -v lxc-ls)" ]]; then
+    echo "Error: lxc-ls not available. Is LXC installed?"
+    exit 1
+  fi
+  lxc_list
+  host_memory
+}
+
+lxc_list() {
+  local total running list out cols line
+  local name state autostart ignore ipv4 ipv6 unprivileged
+  local status auto loadavg procs cpu
+  local ram ram_limit ram_percent
+  local swap swap_limit swap_percent
+  local df disk disk_limit disk_percent
+  local gw privileged
+
+  total=0
+  running=0
+  # sort by field 5 (IPv4)
+  list=$(lxc-ls -f | sort -k 5)
+
+  out="NAME STATUS AUTO LOAD_AVERAGE PROC CPU RAM % SWAP % DISK % IPv4 GATEWAY IPv6 PRIVILEGED"
+
+  while read name state autostart ignore ipv4 ipv6 unprivileged; do
+    if [[ "$name" = "NAME" ]]; then
+      continue
+    fi
+
+    status=${state,,}
+
+    auto="no"
+    if [[ "$autostart" = "1" ]]; then
+      auto="yes"
+    fi
+
+    loadavg=$(lxc-attach -n "$name" -- awk '{print $1"/"$2"/"$3}' /proc/loadavg)
+
+    procs=$(wc -l < "/sys/fs/cgroup/memory/lxc/$name/cgroup.procs")
+
+    cpu=$(sed -n 's/^lxc\.cgroup\.cpu\.shares\s*=\s*\([0-9]\+\)/\1/p' "/var/lib/lxc/$name/config")
+
+    ram=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.usage_in_bytes")
+    ram_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.limit_in_bytes")
+    ram_percent=$(percent "$ram" "$ram_limit")
+    ram=$(format "$ram")
+    ram_limit=$(format "$ram_limit")
+
+    swap="-"
+    swap_limit="-"
+    swap_percent="-"
+    if [[ -f "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes" ]]; then
+      swap=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
+      swap_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
+      swap_percent=$(percent "$swap" "$swap_limit")
+      swap=$(format "$swap")
+      swap_limit=$(format "$swap_limit")
+    fi
+
+    df=$(lxc-attach -n "$name" -- df -B1 /)
+    disk=$(awk 'END{print $3}' <<< "$df")
+    disk_limit=$(awk 'END{print $2}' <<< "$df")
+    disk_percent=$(awk 'END{print $5}' <<< "$df")
+    disk=$(format "$disk")
+    disk_limit=$(format "$disk_limit")
+
+    gw=$(lxc-attach -n "$name" -- ip route list default)
+    gw=$(awk '{print $3}' <<< "$gw")
+
+    privileged="no"
+    if [[ "$unprivileged" = "false" ]]; then
+      privileged="yes"
+    fi
+
+    out="$out^$name $status $auto $loadavg $procs $cpu $ram/$ram_limit $ram_percent $swap/$swap_limit $swap_percent $disk/$disk_limit $disk_percent $ipv4 $gw $ipv6 $privileged"
+
+    total=$(($total + 1))
+    if [[ "$status" = "running" ]]; then
+      running=$(($running + 1))
+    fi
+  done <<< "$list"
+
+  cols=$(tput cols)
+  while read line; do
+    if [[ $cols -gt 0 ]]; then
+      echo "${line:0:$cols}"
+    else
+      echo "$line"
+    fi
+  done < <(tr '^' '\n' <<< "$out" | column -t)
+
+  printf "Total containers: %i running, %i not running, %i total.\n" \
+    "$running" "$(($total - $running))" "$total"
+}
+
+host_memory() {
+  local free
+  local ram_used ram_total ram_percent
+  local swap_used swap_total swap_percent
+
+  free=$(free -b)
+
+  ram_used=$(awk '$1=="Mem:"{print $3}' <<< "$free")
+  ram_total=$(awk '$1=="Mem:"{print $2}' <<< "$free")
+  ram_percent=$(percent "$ram_used" "$ram_total")
+  ram_used=$(format "$ram_used")
+  ram_total=$(format "$ram_total")
+
+  swap_used=$(awk '$1=="Swap:"{print $3}' <<< "$free")
+  swap_total=$(awk '$1=="Swap:"{print $2}' <<< "$free")
+  swap_percent=$(percent "$swap_used" "$swap_total")
+  swap_used=$(format "$swap_used")
+  swap_total=$(format "$swap_total")
+
+  printf "Hardware Node RAM: %s/%s (%s) - Swap: %s/%s (%s)\n" \
+    "$ram_used" "$ram_total" "$ram_percent" \
+    "$swap_used" "$swap_total" "$swap_percent"
+}
+
+# Calculate percent and return it floored.
+# Usage: percent <value> <total>
+percent() {
+  printf "%i%%" "$((100 * $1 / $2))"
+}
+
+# Format number with suffix (k/M/G) and minimum 2 significant digits.
+# Usage: format <integer>
+format() {
+  local mult unit size digits float
+  mult=1
+  for unit in "" k M G T P E Z Y; do
+    if [[ $1 -lt $[$mult * 1024] ]]; then
+      break
+    fi
+    mult=$[$mult * 1024]
+  done
+  size=$[$1 / $mult]
+  if [[ $size -lt 10 ]]; then
+    digits=1
+  else
+    digits=0
+  fi
+  float=$[10 * $1 / $mult - 10 * $size]
+  if [[ $digits -eq 0 ]] || [[ $float -eq 0 ]]; then
+    printf "%i%s" $size $unit
+  else
+    printf "%i.%0i%s" $size $float $unit
+  fi
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
+fi

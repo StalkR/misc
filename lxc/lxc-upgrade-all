@@ -1,0 +1,25 @@
+#!/bin/bash
+# Upgrade all Debian containers with lxc-attach.
+
+declare -r UPCMD="apt update && "\
+"apt upgrade -y && "\
+"apt full-upgrade -y && "\
+"apt autoremove -y &&"\
+"apt-get clean"
+
+main() {
+  local c
+  for c in $(lxc-ls); do
+    if ! lxc-attach -n "$c" -- grep -q Debian /etc/issue.net; then
+      echo "--- Skipping container $c: not Debian"
+      continue
+    fi
+    echo "--- Updating container $c"
+    lxc-attach -n "$c" -- bash -c "$UPCMD" || return 1
+    echo
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then
+  main "$@"
+fi
