@@ -53,6 +53,7 @@ lxc_list() {
     swap="-"
     swap_limit="-"
     swap_percent="-"
+    # may need kernel cmdline swapaccount=1
     if [[ -f "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes" ]]; then
       swap=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
       swap_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
