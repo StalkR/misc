@@ -10,7 +10,7 @@ declare -r RSH='ssh -i /mnt/nas/ssh.key'
 # - transfer_enc <name> <key> <orig> <dest>
 sync() {
   # Ensure directories are there (e.g. mounted)
-  check_exists '/mnt/nas/backups'
+  exists '/mnt/nas/backups' || return
 
   # Pull remote docs locally, do not delete anything if it disappears on remote.
   transfer 'Pull docs' 'example.com:/mnt/docs/' '/mnt/nas/docs/'
@@ -164,14 +164,16 @@ _rsync_enc() {
   return $result
 }
 
-check_exists() {
+exists() {
   while [[ -n "$1" ]]; do
     if [[ ! -e "$1" ]]; then
-      echo "$1 not available" >&2
-      exit 1
+      errors=$(($errors+1))
+      echo "$1 not available" >&3
+      return 1
     fi
     shift
   done
+  return 0
 }
 
 duration() {
