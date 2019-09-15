@@ -27,7 +27,7 @@ lxc_list() {
   out="NAME STATUS AUTO LOAD_AVERAGE PROC CPU RAM % SWAP % DISK % IPv4 GATEWAY IPv6 PRIVILEGED"
 
   while read name state autostart ignore ipv4 ipv6 unprivileged; do
-    if [[ "$name" = "NAME" ]]; then
+    if [[ -z "$name" ]] || [[ "$name" = "NAME" ]]; then
       continue
     fi
 
