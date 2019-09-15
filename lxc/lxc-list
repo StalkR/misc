@@ -70,7 +70,7 @@ lxc_list() {
     # may need kernel cmdline swapaccount=1
     if [[ -f "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes" ]]; then
       swap=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
-      swap_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
+      swap_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.limit_in_bytes")
       swap_percent=$(percent "$swap" "$swap_limit")
       swap=$(format "$swap")
       swap_limit=$(format "$swap_limit")
@@ -91,7 +91,11 @@ lxc_list() {
     gw="-"
     if [[ "$status" = "running" ]]; then
       gw=$(lxc-attach -n "$name" -- ip route list default)
-      gw=$(awk '{print $3}' <<< "$gw")
+      gw=$(awk '$1=="default"{print $3}' <<< "$gw")
+    fi
+
+    if [[ -z "$ipv6" ]]; then
+      ipv6="-"
     fi
 
     privileged="no"
