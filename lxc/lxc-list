@@ -39,7 +39,7 @@ lxc_list() {
     fi
 
     loadavg="-"
-    if [[ "$status" = "started" ]]; then
+    if [[ "$status" = "running" ]]; then
       loadavg=$(lxc-attach -n "$name" -- awk '{print $1"/"$2"/"$3}' /proc/loadavg)
     fi
 
@@ -79,7 +79,7 @@ lxc_list() {
     disk="-"
     disk_limit="-"
     disk_percent="-"
-    if [[ "$status" = "started" ]]; then
+    if [[ "$status" = "running" ]]; then
       df=$(lxc-attach -n "$name" -- df -B1 /)
       disk=$(awk 'END{print $3}' <<< "$df")
       disk_limit=$(awk 'END{print $2}' <<< "$df")
@@ -89,7 +89,7 @@ lxc_list() {
     fi
 
     gw="-"
-    if [[ "$status" = "started" ]]; then
+    if [[ "$status" = "running" ]]; then
       gw=$(lxc-attach -n "$name" -- ip route list default)
       gw=$(awk '{print $3}' <<< "$gw")
     fi
