@@ -38,17 +38,31 @@ lxc_list() {
       auto="yes"
     fi
 
-    loadavg=$(lxc-attach -n "$name" -- awk '{print $1"/"$2"/"$3}' /proc/loadavg)
+    loadavg="-"
+    if [[ "$status" = "started" ]]; then
+      loadavg=$(lxc-attach -n "$name" -- awk '{print $1"/"$2"/"$3}' /proc/loadavg)
+    fi
 
-    procs=$(wc -l < "/sys/fs/cgroup/memory/lxc/$name/cgroup.procs")
+    procs="-"
+    if [[ -f "/sys/fs/cgroup/memory/lxc/$name/cgroup.procs" ]]; then
+      procs=$(wc -l < "/sys/fs/cgroup/memory/lxc/$name/cgroup.procs")
+    fi
 
     cpu=$(sed -n 's/^lxc\.cgroup\.cpu\.shares\s*=\s*\([0-9]\+\)/\1/p' "/var/lib/lxc/$name/config")
+    if [[ -z "$cpu" ]]; then
+      cpu="-"
+    fi
 
-    ram=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.usage_in_bytes")
-    ram_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.limit_in_bytes")
-    ram_percent=$(percent "$ram" "$ram_limit")
-    ram=$(format "$ram")
-    ram_limit=$(format "$ram_limit")
+    ram="-"
+    ram_limit="-"
+    ram_percent="-"
+    if [[ -f "/sys/fs/cgroup/memory/lxc/$name/memory.usage_in_bytes" ]]; then
+      ram=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.usage_in_bytes")
+      ram_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.limit_in_bytes")
+      ram_percent=$(percent "$ram" "$ram_limit")
+      ram=$(format "$ram")
+      ram_limit=$(format "$ram_limit")
+    fi
 
     swap="-"
     swap_limit="-"
@@ -62,15 +76,23 @@ lxc_list() {
       swap_limit=$(format "$swap_limit")
     fi
 
-    df=$(lxc-attach -n "$name" -- df -B1 /)
-    disk=$(awk 'END{print $3}' <<< "$df")
-    disk_limit=$(awk 'END{print $2}' <<< "$df")
-    disk_percent=$(awk 'END{print $5}' <<< "$df")
-    disk=$(format "$disk")
-    disk_limit=$(format "$disk_limit")
+    disk="-"
+    disk_limit="-"
+    disk_percent="-"
+    if [[ "$status" = "started" ]]; then
+      df=$(lxc-attach -n "$name" -- df -B1 /)
+      disk=$(awk 'END{print $3}' <<< "$df")
+      disk_limit=$(awk 'END{print $2}' <<< "$df")
+      disk_percent=$(awk 'END{print $5}' <<< "$df")
+      disk=$(format "$disk")
+      disk_limit=$(format "$disk_limit")
+    fi
 
-    gw=$(lxc-attach -n "$name" -- ip route list default)
-    gw=$(awk '{print $3}' <<< "$gw")
+    gw="-"
+    if [[ "$status" = "started" ]]; then
+      gw=$(lxc-attach -n "$name" -- ip route list default)
+      gw=$(awk '{print $3}' <<< "$gw")
+    fi
 
     privileged="no"
     if [[ "$unprivileged" = "false" ]]; then
