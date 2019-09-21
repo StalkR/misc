@@ -1,13 +1,4 @@
 // Binary tor2web is a simple tor to web gateway.
-//
-// It requires a TOR transparent proxy and local
-// DNS resolver configured for .onion addresses.
-//
-// Send traffic to it, e.g. hiddenservice.onion.example.net
-// and it will respond with hiddenservice.onion.
-//
-// Use cgo to rely on system DNS resolver.
-// GODEBUG=netdns=cgo go run tor2web.go
 package main
 
 import (
@@ -15,15 +6,24 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"strings"
 )
 
-var flagListen = flag.String("listen", ":9050", "Address to listen on.")
+var (
+	flagListen = flag.String("listen", ":9080", "Address to listen on.")
+	flagServer = flag.String("server", "", "TOR socks server to proxy connections to.")
+)
 
 const onionTLD = ".onion"
 
 func main() {
 	flag.Parse()
+	if *flagServer == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+	os.Setenv("HTTP_PROXY", "socks5://"+*flagServer)
 	http.Handle("/", &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			req.URL.Scheme = "http"
