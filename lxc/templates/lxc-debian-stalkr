@@ -337,7 +337,7 @@ $iproute,\
 curl,\
 deborphan,\
 etckeeper,\
-gnupg2,\
+gnupg,\
 htop,\
 most,\
 procps,\
