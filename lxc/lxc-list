@@ -178,6 +178,9 @@ format() {
     fi
     mult=$[$mult * 1024]
   done
+  if [[ $mult -eq 0 ]]; then
+    return
+  fi
   size=$[$1 / $mult]
   if [[ $size -lt 10 ]]; then
     digits=1
