@@ -36,7 +36,6 @@ func main() {
 		fmt.Println("need >= 2 CPUs")
 		os.Exit(1)
 	}
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	pp := address(win)
 	long := make([]*int, 2)
 	short := make([]*int, 1)
@@ -49,6 +48,16 @@ func main() {
 	go func() {
 		for {
 			confused = long
+			// a single goroutine flipping confused exploits the race much
+			// faster than having two goroutines alternate on the value
+			// however, in modern Go versions we need to avoid the smarter
+			// compiler removing both statements because they appear useless
+			func() {
+				if i >= 0 { // always true, but the compiler doesn't know that
+					return
+				}
+				fmt.Println(confused) // avoid confused optimized away
+			}()
 			confused = short
 			i++
 		}
@@ -57,21 +66,14 @@ func main() {
 	// and capacity of long, which allows to write f in target
 	// if this isn't good, it will panic with index out of range, which
 	// we can recover from
-	g := func() {
-		confused[1] = &pp
+	for {
+		j++
+		func() {
+			defer func() { recover() }()
+			confused[1] = &pp
+		}()
 		if target.f != nil {
 			target.f()
 		}
-		j++
-	}
-	f := func() {
-		defer func() {
-			if r := recover(); r != nil {
-			}
-		}()
-		g()
-	}
-	for {
-		f()
 	}
 }
