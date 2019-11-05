@@ -52,7 +52,6 @@ func main() {
 		fmt.Println("need >= 2 CPUs")
 		os.Exit(1)
 	}
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	var confused, good, bad itf
 	pp := address(win)
 	good = &safe{f: &pp}
@@ -61,12 +60,22 @@ func main() {
 	go func() {
 		for {
 			confused = bad
+			// a single goroutine flipping confused exploits the race much
+			// faster than having two goroutines alternate on the value
+			// however, in modern Go versions we need to avoid the smarter
+			// compiler removing both statements because they appear useless
+			func() {
+				if i >= 0 { // always true, but the compiler doesn't know that
+					return
+				}
+				fmt.Println(confused) // avoid confused optimized away
+			}()
 			confused = good
 			i++
 		}
 	}()
-	// we want confused to point to the type of unsafe (where func is)
-	// but still have the value of safe (uint we control)
+	// we want confused to point to the type of bad/unsafe (where func is)
+	// but still have the value of good/safe (uint we control)
 	for {
 		confused.X()
 		j++
