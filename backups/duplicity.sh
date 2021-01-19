@@ -33,7 +33,7 @@ run() {
   if [[ "${TARGET:0:7}" = "file://" ]]; then
     if [[ ! -d "${TARGET:7}" ]]; then
       echo "Error: target does not exist $TARGET" >&2
-      exit 1
+      return
     fi
   fi
   case "$(uname -o)" in
