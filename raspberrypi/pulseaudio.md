@@ -39,15 +39,12 @@ What worked for me is the TCP module with Zeroconf (Avahi).
 ## Windows
 
 I created [`winpulse`](https://github.com/StalkR/winpulse).
-It captures Windows Audio and streams it to a PulseAudio server using its
-native protocol or over SSH by running `pacat` on the server.
+It captures Windows Audio and streams it to a PulseAudio server over SSH by
+running `pacat` on the server.
 
-It uses these small libraries:
-
-* [`github.com/StalkR/winpulse/winaudio`](https://godoc.org/github.com/StalkR/winpulse/winaudio)
-  to capture local audio on Windows
-* [`github.com/StalkR/winpulse/pulseaudio`](https://godoc.org/github.com/StalkR/winpulse/pulseaudio)
-  to stream audio with PulseAudio native protocol
+It uses
+[`github.com/StalkR/winpulse/winaudio`](https://godoc.org/github.com/StalkR/winpulse/winaudio)
+to capture local audio on Windows.
 
 ## Issues
 
