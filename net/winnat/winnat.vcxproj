@@ -27,6 +27,8 @@
  <ItemDefinitionGroup>
   <Link>
    <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Release|x64'">WinDivert.lib;%(AdditionalDependencies)</AdditionalDependencies>
+   <GenerateDebugInformation>false</GenerateDebugInformation>
+   <ProgramDatabaseFile></ProgramDatabaseFile>
   </Link>
  </ItemDefinitionGroup>
  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

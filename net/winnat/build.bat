@@ -6,4 +6,3 @@ rem - WinDivert.dll, WinDivert.lib & WinDivert.sys from latest WinDivert release
 rem - Find your binary in x64\Release\winnat.exe
 rem - Run it with WinDivert.{dll,sys} in the current working directory
 msbuild winnat.vcxproj /p:Configuration=Release /p:Platform=x64
-
