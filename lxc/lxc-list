@@ -43,8 +43,8 @@ lxc_list() {
     fi
 
     procs="-"
-    if [[ -f "/sys/fs/cgroup/memory/lxc/$name/cgroup.procs" ]]; then
-      procs=$(wc -l < "/sys/fs/cgroup/memory/lxc/$name/cgroup.procs")
+    if [[ -f "/sys/fs/cgroup/memory/lxc.payload.$name/cgroup.procs" ]]; then
+      procs=$(wc -l < "/sys/fs/cgroup/memory/lxc.payload.$name/cgroup.procs")
     fi
 
     cpu=$(sed -n 's/^lxc\.cgroup\.cpu\.shares\s*=\s*\([0-9]\+\)/\1/p' "/var/lib/lxc/$name/config")
@@ -55,9 +55,9 @@ lxc_list() {
     ram="-"
     ram_limit="-"
     ram_percent="-"
-    if [[ -f "/sys/fs/cgroup/memory/lxc/$name/memory.usage_in_bytes" ]]; then
-      ram=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.usage_in_bytes")
-      ram_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.limit_in_bytes")
+    if [[ -f "/sys/fs/cgroup/memory/lxc.payload.$name/memory.usage_in_bytes" ]]; then
+      ram=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.usage_in_bytes")
+      ram_limit=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.limit_in_bytes")
       ram_percent=$(percent "$ram" "$ram_limit")
       ram=$(format "$ram")
       ram_limit=$(format "$ram_limit")
@@ -67,9 +67,9 @@ lxc_list() {
     swap_limit="-"
     swap_percent="-"
     # may need kernel cmdline swapaccount=1
-    if [[ -f "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes" ]]; then
-      swap=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.usage_in_bytes")
-      swap_limit=$(cat "/sys/fs/cgroup/memory/lxc/$name/memory.memsw.limit_in_bytes")
+    if [[ -f "/sys/fs/cgroup/memory/lxc.payload.$name/memory.memsw.usage_in_bytes" ]]; then
+      swap=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.memsw.usage_in_bytes")
+      swap_limit=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.memsw.limit_in_bytes")
       swap_percent=$(percent "$swap" "$swap_limit")
       swap=$(format "$swap")
       swap_limit=$(format "$swap_limit")
@@ -87,6 +87,7 @@ lxc_list() {
       disk_limit=$(format "$disk_limit")
     fi
 
+    ipv4=""
     if [[ "$status" = "running" ]]; then
       ipv4=$(lxc-attach -n "$name" -- ip address list dev eth0)
       ipv4=$(awk '$1=="inet"{print $2}' <<< "$ipv4")
@@ -95,6 +96,7 @@ lxc_list() {
       ipv4="-"
     fi
 
+    gw=""
     if [[ "$status" = "running" ]]; then
       gw=$(lxc-attach -n "$name" -- ip route list default)
       gw=$(awk '$1=="default"{print $3}' <<< "$gw")
@@ -103,6 +105,7 @@ lxc_list() {
       gw="-"
     fi
 
+    ipv6=""
     if [[ "$status" = "running" ]]; then
       ipv6=$(lxc-attach -n "$name" -- ip -6 address list dev eth0 scope global)
       ipv6=$(awk '$1=="inet6"{print $2}' <<< "$ipv6")
