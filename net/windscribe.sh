@@ -2,8 +2,14 @@
 # Generate OpenVPN configs for Windscribe.
 set -e
 
-username='xxx'
-password='xxx'
+username=''
+password=''
+
+if [[ -z "$username" ]] || [[ -z "$password" ]]; then
+  echo "missing username/password"
+  exit 1
+fi
+
 epoch=$(date '+%s')
 # https://github.com/Windscribe/Desktop-App/blob/master/common/utils/hardcodedsettings.ini#L6
 key='952b4412f002315aa50751032fcaab03'
@@ -13,13 +19,22 @@ client_auth_hash=$(echo -n "$key$epoch" | md5sum | cut -d' ' -f1)
 useragent='Mozilla/5.0'
 
 login=$(curl -sA "$useragent" -d "username=$username&password=$password&session_type_id=3&time=$epoch&client_auth_hash=$client_auth_hash" "https://api.windscribe.com/Session")
+used=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["traffic_used"]')
+max=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["traffic_max"]')
+percent=$((100*$used/$max))
+lastreset=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["last_reset"]')
+echo "[*] traffic used: $used/$max ($percent%), last reset $lastreset"
+if [[ $percent -gt 100 ]]; then
+  echo "[-] out of quota"
+  exit 1
+fi
 session_auth_hash=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["session_auth_hash"]')
 
 config=$(curl -sA "$useragent" "https://api.windscribe.com/ServerConfigs?session_auth_hash=$session_auth_hash&time=$epoch&client_auth_hash=$client_auth_hash")
 echo "$config" | base64 -d > windscribe.cfg
 
 creds=$(curl -sA "$useragent" "https://api.windscribe.com/ServerCredentials?session_auth_hash=$session_auth_hash&time=$epoch&client_auth_hash=$client_auth_hash")
-echo "$creds" | python2 -c 'import base64,json,sys; d=json.load(sys.stdin)["data"]; print base64.b64decode(d["username"]); print base64.b64decode(d["password"])' > windscribe.auth
+echo "$creds" | python2 -c 'import base64,json,sys; d=json.load(sys.stdin)["data"]; print base64.b64decode(d["username"]); print base64.b64decode(d["password"])' > windscribe.auth || { echo "$creds"; exit 1; }
 echo "[+] windscribe.auth"
 
 servers=$(curl -sA "$useragent" "https://api.windscribe.com/ServerLocations?session_auth_hash=$session_auth_hash&time=$epoch&client_auth_hash=$client_auth_hash")
@@ -32,4 +47,3 @@ cat windscribe.cfg servers.list > windscribe.conf
 echo "[+] windscribe.conf"
 
 rm -f windscribe.cfg servers.json servers.list
-
