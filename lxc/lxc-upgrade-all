@@ -9,7 +9,7 @@ declare -r UPCMD="apt update && "\
 
 main() {
   local c
-  for c in $(lxc-ls); do
+  for c in $(lxc-ls --running); do
     if ! lxc-attach -n "$c" -- grep -q Debian /etc/issue.net; then
       echo "--- Skipping container $c: not Debian"
       continue
