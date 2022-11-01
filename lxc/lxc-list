@@ -43,8 +43,8 @@ lxc_list() {
     fi
 
     procs="-"
-    if [[ -f "/sys/fs/cgroup/memory/lxc.payload.$name/cgroup.procs" ]]; then
-      procs=$(wc -l < "/sys/fs/cgroup/memory/lxc.payload.$name/cgroup.procs")
+    if [[ -f "/sys/fs/cgroup/cpu/lxc.payload.$name/cgroup.procs" ]]; then
+      procs=$(wc -l < "/sys/fs/cgroup/cpu/lxc.payload.$name/cgroup.procs")
     fi
 
     cpu=$(sed -n 's/^lxc\.cgroup\.cpu\.shares\s*=\s*\([0-9]\+\)/\1/p' "/var/lib/lxc/$name/config")
