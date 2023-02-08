@@ -2,17 +2,19 @@
 
 /*
 Binary vnc_to_vm connects VNC to a remote VM via its socket file over SSH.
-- connect to the local SSH agent in cygwin
+- connect to the local SSH agent in WSL
 - connect to the remote server with SSH
 - relay the remote VNC socket file over SSH into a local listener
 - start VNC viewer with it
 
 Requirements:
-- cygwin, with ssh and socat installed, ssh-agent running
-- socat on the destination, TightVNC viewer locally
+- local: TightVNC viewer installed
+- local: WSL with ssh and socat installed, ssh-agent running and socket 
+         available under $SSH_AUTH_SOCK after running bash and .bashrc.
+- remote: socat installed
 
-To avoid opening a command window:
-  go build -ldflags -H=windowsgui vnc_to_vm.go
+Build (flags are to avoid opening a command window):
+  GOOS=windows go build -ldflags -H=windowsgui vnc_to_vm.go
 */
 
 package main
@@ -27,7 +29,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/StalkR/winpulse/cygwin"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -138,7 +139,7 @@ func sshToVNC(user, host, socket string, vnc io.ReadWriter) error {
 }
 
 func connect(user, host string) (*ssh.Client, error) {
-	ag, err := cygwin.SSHAgent()
+	ag, err := sshAgent()
 	if err != nil {
 		return nil, err
 	}
@@ -151,4 +152,51 @@ func connect(user, host string) (*ssh.Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	return ssh.Dial("tcp", host, config)
+}
+
+// SSHAgent connects to a running ssh-agent unix socket on WSL.
+// The user is responsible for setting up $SSH_AUTH_SOCK in their bashrc.
+func sshAgent() (io.ReadWriteCloser, error) {
+  cmd := exec.Command("wsl", "bash", "-c", "PS1=x source ~/.bashrc; socat - UNIX:\\$SSH_AUTH_SOCK")
+  stdin, err := cmd.StdinPipe()
+  if err != nil {
+    return nil, err
+  }
+  stdout, err := cmd.StdoutPipe()
+  if err != nil {
+    return nil, err
+  }
+  if err := cmd.Start(); err != nil {
+    return nil, err
+  }
+  return &sshAgentCmd{stdout, stdin, cmd}, nil
+}
+
+// sshAgentCmd implements io.ReadWriteCloser.
+type sshAgentCmd struct {
+  stdout io.ReadCloser
+  stdin  io.WriteCloser
+  cmd    *exec.Cmd
+}
+
+func (s *sshAgentCmd) Read(p []byte) (int, error)  { return s.stdout.Read(p) }
+func (s *sshAgentCmd) Write(p []byte) (int, error) { return s.stdin.Write(p) }
+func (s *sshAgentCmd) Close() error {
+  var errors []error
+  if err := s.stdin.Close(); err != nil {
+    errors = append(errors, err)
+  }
+  if err := s.stdout.Close(); err != nil {
+    errors = append(errors, err)
+  }
+  if err := s.cmd.Wait(); err != nil {
+    errors = append(errors, err)
+  }
+  if len(errors) > 0 {
+    if len(errors) == 1 {
+      return errors[0]
+    }
+    return fmt.Errorf("close: %v errors, first: %v", len(errors), errors[0])
+  }
+  return nil
 }
