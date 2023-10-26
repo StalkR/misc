@@ -1,7 +1,6 @@
 #!/bin/bash
 # Generate OpenVPN configs for Windscribe.
 set -e
-
 username=''
 password=''
 
@@ -22,11 +21,17 @@ login=$(curl -sA "$useragent" -d "username=$username&password=$password&session_
 used=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["traffic_used"]')
 max=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["traffic_max"]')
 percent=$((100*$used/$max))
+remain=$((($max-$used)/1024/1024))MB
+used=$(($used/1024/1024))MB
+max=$(($max/1024/1024))MB
 lastreset=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["last_reset"]')
-echo "[*] traffic used: $used/$max ($percent%), last reset $lastreset"
+echo "[*] traffic used: $used/$max ($percent%) $remain remaining, last reset $lastreset"
 if [[ $percent -gt 100 ]]; then
   echo "[-] out of quota"
   exit 1
+fi
+if [[ -n "$QUOTA" ]]; then
+  exit 0
 fi
 session_auth_hash=$(echo "$login" | python2 -c 'import json,sys; print json.load(sys.stdin)["data"]["session_auth_hash"]')
 
@@ -39,7 +44,8 @@ echo "[+] windscribe.auth"
 
 servers=$(curl -sA "$useragent" "https://api.windscribe.com/ServerLocations?session_auth_hash=$session_auth_hash&time=$epoch&client_auth_hash=$client_auth_hash")
 echo "$servers" > servers.json
-echo "$servers" | python2 -c 'import json,sys; h=[]; [[h.append(n["hostname"]) for n in e["nodes"]] for e in json.load(sys.stdin)["data"] if "nodes" in e]; print "\n".join(";remote %s 443" % e for e in h)' > servers.list
+echo "$servers" | python2 -c 'import json,sys; h=[]; [[h.append(n["hostname"]) for n in e["nodes"]] for e in json.load(sys.stdin)["data"] if "nodes" in e]; print "\n".join(";remote %s 443" % e for e in sorted(h))' > servers.list
+sed -i '1 s/^;//' servers.list
 
 sed -i 's/^auth-user-pass$/auth-user-pass windscribe.auth/' windscribe.cfg
 sed -i 's/^dev tun$/dev tun0/' windscribe.cfg
