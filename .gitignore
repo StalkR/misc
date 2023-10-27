@@ -1,0 +1,6 @@
+.nobackup
+*.exe
+*.dll
+*.lib
+*.sys
+net/winnat/x64/
