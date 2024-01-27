@@ -43,7 +43,7 @@ mount /dev/mapper/crypt /mnt
 ## Installing a system
 
 From now on, install as you normally would.
-As an example, let's install Debian 10 (buster).
+As an example, let's install Debian 12 (bookworm).
 
 Set a hostname on the temporary host so the new system inherits it later:
 ```
@@ -54,7 +54,7 @@ hostname -F /etc/hostname
 Use debootstrap to install Debian:
 
 ```
-debootstrap buster /mnt
+debootstrap bookworm /mnt
 ```
 
 Enter the chroot to continue installing:
@@ -149,8 +149,8 @@ Use [kexec(8)](kexec) to load a new kernel and initramfs then execute it:
 [kexec]: https://linux.die.net/man/8/kexec
 
 ```
-kexec -l /boot/vmlinuz-4.19.0-6-amd64 --initrd=/boot/initrd.img-4.19.0-6-amd64 --append=''
-kexec -e
+kexec -l /boot/vmlinuz-6.1.0-17-amd64 --initrd=/boot/initrd.img-6.1.0-17-amd64 --append=''
+reboot # should run `kexec -e` if you allowed kexec-tools to handle reboots
 ```
 
 You can use `--append=''` to set kernel command-line parameters, for example:

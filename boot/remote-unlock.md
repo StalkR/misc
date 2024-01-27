@@ -4,8 +4,8 @@ This guide describes how to set up and boot a remote server with disk
 encryption, using a script in initramfs that sets up networking then listens
 for the LUKS key over TLS using socat.
 
-It uses static IP configuration and listens on a fixed port, but you may adapt
-it to other configurations.
+It can use DHCP or static IP configuration and listens on a fixed port, but you
+may adapt it to other configurations.
 
 ## Pre-requisites
 
@@ -51,12 +51,27 @@ esac
 . /usr/share/initramfs-tools/hook-functions
 
 copy_exec /usr/bin/socat /bin/
-copy_exec /usr/bin/tr /bin/
-copy_exec /sbin/ip /sbin/
 mkdir -p \$DESTDIR/etc/cryptroot
 cp /etc/cryptroot/server.pem \$DESTDIR/etc/cryptroot
 EOF
 chmod a+x /etc/initramfs-tools/hooks/cryptroot
+```
+
+## Configuring network
+
+We'll use Linux [ipconfig][ipconfig], configuring network directly on kernel
+cmdline:
+
+ - DHCP: `ip=:::::eth0:dhcp`
+ - static IP: `ip=192.168.0.1:::::eth0:none`
+
+[ipconfig]: https://git.kernel.org/pub/scm/libs/klibc/klibc.git/tree/usr/kinit/ipconfig/README.ipconfig
+
+Then we use standard initramfs functions to initialize networking from that:
+
+```
+. /scripts/functions
+configure_networking
 ```
 
 ## Script to receive the key
@@ -64,33 +79,18 @@ chmod a+x /etc/initramfs-tools/hooks/cryptroot
 Set up networking, listen for the key, write it to stdout, deconfigure
 networking and resume boot.
 
-Change:
-
-- `eth0` with the network device
-- `192.168.0.2/24` with the static IP and CIDR mask
-- `192.168.0.1` with the gateway
-- `1337` with the port you want to listen on
+Change `1337` with the port you want to listen on.
 
 ```
 cat << EOF > /etc/cryptroot/key.sh
 #!/bin/sh
-DEVICE=eth0
-IP=192.168.0.2/24
-GW=192.168.0.1
-PORT=1337
-
-echo "Configuring boot network device \${DEVICE}..." >&2
-ip link set \$DEVICE up
-ip address add \$IP dev \$DEVICE
-ip route add default via \$GW
-
-echo "Waiting for remote key..." >&2
-socat openssl-listen:\${PORT},reuseaddr,cert=/etc/cryptroot/server.pem,verify=0 STDOUT |tr -d "\r\n"
-
-echo "Deconfiguring boot network..." >&2
-ip route del default via \$GW
-ip address del \$IP dev \$DEVICE
-ip link set \$DEVICE down
+{
+  echo "Configure network..."
+  . /scripts/functions
+  configure_networking
+  echo "Waiting for remote key..."
+} >&2
+socat openssl-listen:1337,reuseaddr,cert=/etc/cryptroot/server.pem,verify=0 STDOUT
 EOF
 chmod a+x /etc/cryptroot/key.sh
 ```
@@ -132,11 +132,9 @@ Change:
 - `1337` with the listening port you chose
 
 ```
-socat openssl-connect:example.net:1337,verify=1,cafile=server.crt
+socat - openssl-connect:example.net:1337,verify=1,cafile=server.crt < <(read x; echo -n "$x")
 ```
 
-Copy the key, press enter then ^D (end of transmission) to close.
+Copy the key and press enter.
 
-Your server should now continue booting, which you can notice because it should
-stop responding to pings (networking deconfigured), and then respond to pings
-again when it's fully booted (if you allow pings).
+Your server should now unlock disk and continue booting.
