@@ -43,8 +43,8 @@ lxc_list() {
     fi
 
     procs="-"
-    if [[ -f "/sys/fs/cgroup/cpu/lxc.payload.$name/cgroup.procs" ]]; then
-      procs=$(wc -l < "/sys/fs/cgroup/cpu/lxc.payload.$name/cgroup.procs")
+    if [[ -f "/sys/fs/cgroup/lxc.payload.$name/cgroup.procs" ]]; then
+      procs=$(wc -l < "/sys/fs/cgroup/lxc.payload.$name/cgroup.procs")
     fi
 
     cpu=$(sed -n 's/^lxc\.cgroup\.cpu\.shares\s*=\s*\([0-9]\+\)/\1/p' "/var/lib/lxc/$name/config")
@@ -55,24 +55,32 @@ lxc_list() {
     ram="-"
     ram_limit="-"
     ram_percent="-"
-    if [[ -f "/sys/fs/cgroup/memory/lxc.payload.$name/memory.usage_in_bytes" ]]; then
-      ram=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.usage_in_bytes")
-      ram_limit=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.limit_in_bytes")
-      ram_percent=$(percent "$ram" "$ram_limit")
+    if [[ -f "/sys/fs/cgroup/lxc.payload.$name/memory.current" ]]; then
+      ram=$(cat "/sys/fs/cgroup/lxc.payload.$name/memory.current")
+      ram_limit=$(cat "/sys/fs/cgroup/lxc.payload.$name/memory.max")
+      if [[ "$ram_limit" = "max" ]]; then
+        ram_limit='-'
+      else
+        ram_percent=$(percent "$ram" "$ram_limit")
+        ram_limit=$(format "$ram_limit")
+      fi
       ram=$(format "$ram")
-      ram_limit=$(format "$ram_limit")
     fi
 
     swap="-"
     swap_limit="-"
     swap_percent="-"
     # may need kernel cmdline swapaccount=1
-    if [[ -f "/sys/fs/cgroup/memory/lxc.payload.$name/memory.memsw.usage_in_bytes" ]]; then
-      swap=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.memsw.usage_in_bytes")
-      swap_limit=$(cat "/sys/fs/cgroup/memory/lxc.payload.$name/memory.memsw.limit_in_bytes")
-      swap_percent=$(percent "$swap" "$swap_limit")
+    if [[ -f "/sys/fs/cgroup/lxc.payload.$name/memory.swap.current" ]]; then
+      swap=$(cat "/sys/fs/cgroup/lxc.payload.$name/memory.swap.current")
+      swap_limit=$(cat "/sys/fs/cgroup/lxc.payload.$name/memory.swap.max")
+      if [[ "$swap_limit" = "max" ]]; then
+        swap_limit='-'
+      else
+        swap_percent=$(percent "$swap" "$swap_limit")
+        swap_limit=$(format "$swap_limit")
+      fi
       swap=$(format "$swap")
-      swap_limit=$(format "$swap_limit")
     fi
 
     disk="-"
@@ -155,7 +163,10 @@ host_memory() {
 
   swap_used=$(awk '$1=="Swap:"{print $3}' <<< "$free")
   swap_total=$(awk '$1=="Swap:"{print $2}' <<< "$free")
-  swap_percent=$(percent "$swap_used" "$swap_total")
+  swap_percent='0%'
+  if [[ $swap_total -gt 0 ]]; then
+    swap_percent=$(percent "$swap_used" "$swap_total")
+  fi
   swap_used=$(format "$swap_used")
   swap_total=$(format "$swap_total")
 
