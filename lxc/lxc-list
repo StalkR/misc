@@ -47,9 +47,9 @@ lxc_list() {
       procs=$(wc -l < "/sys/fs/cgroup/lxc.payload.$name/cgroup.procs")
     fi
 
-    cpu=$(sed -n 's/^lxc\.cgroup\.cpu\.shares\s*=\s*\([0-9]\+\)/\1/p' "/var/lib/lxc/$name/config")
-    if [[ -z "$cpu" ]]; then
-      cpu="-"
+    cpu="-"
+    if [[ -f "/sys/fs/cgroup/lxc.payload.$name/cpu.weight" ]]; then
+      cpu=$(cat "/sys/fs/cgroup/lxc.payload.$name/cpu.weight")
     fi
 
     ram="-"
