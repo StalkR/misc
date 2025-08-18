@@ -1,11 +1,47 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" src="./javascript/jquery/jquery.min.js"></script>
-    <script type="text/javascript" src="./javascript/remote.js"></script>
-    <script type="text/javascript" src="./javascript/add.js"></script>
+    <script>
+const transmission = {
+  session_id: '',
+  async rpc(args) {
+    while (true) {
+      const response = await fetch('/transmission/rpc', {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'include',
+        headers: [['X-Transmission-Session-Id', this.session_id]],
+        body: JSON.stringify(args),
+      });
+      this.session_id = response.headers.get('X-Transmission-Session-Id');
+      if (response.ok) return await response.json();
+      if (response.status == 409) continue;
+      break;
+    }
+  },
+  async add(url) {
+    const result = await this.rpc({'method': 'session-get'});
+    return await this.rpc({
+      'method': 'torrent-add',
+      'arguments': {
+        'download-dir': result['arguments']['download-dir'],
+        'filename': url,
+        'paused': false
+      },
+    });
+  }
+}
+
+addEventListener('DOMContentLoaded', async (event) => {
+  if (location.search.length <= 1) return;
+  document.body.innerText = 'Adding URL... will close when done.';
+  const url = location.search.substr(1);
+  await transmission.add(url);
+  window.close();
+});
+    </script>
   </head>
   <body>
-  <p>Use this to add torrents by URL: add.html?&lt;URL&gt;</p>
+    Use this to add torrents by URL: add.html?&lt;URL&gt;
   </body>
 </html>
