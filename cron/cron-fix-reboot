@@ -1,0 +1,27 @@
+#!/bin/sh
+# init script to fix cron @reboot inside of an LXC container
+#
+### BEGIN INIT INFO
+# Provides:          cron-fix-reboot
+# Required-Start:    $remote_fs $syslog $time
+# Required-Stop:     $remote_fs $syslog $time
+# X-Start-Before:    cron
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: cron fix @reboot for LXC
+# Description:       this script removes /var/run/crond.reboot so cron can
+#                    trigger @reboot at LXC container start.
+### END INIT INFO
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+
+case "$1" in
+  start) rm -f /var/run/crond.reboot ;;
+  stop) ;;
+  restart) ;;
+  reload|force-reload) ;;
+  status) ;;
+  *) echo "Usage: /etc/init.d/cron-fix-reboot start"; exit 2;;
+esac
+
+exit 
