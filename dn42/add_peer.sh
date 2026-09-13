@@ -1,43 +1,39 @@
 #!/bin/bash
 # Add a peer to WireGuard & bird, then bring up and configure.
-# Ports are allocated incrementally and if available.
+# Listening port and link-local addresses are derived from the AS.
 
-# port range, min/max both included
-min_port=51821
-max_port=52000
-
-# typically fe80:: followed by the last 4 digits of your AS
-local_link="fe80::1248"
+local_as="4242420000"
+local_endpoint="example.com"
 
 # ---
 
+read -p "Peer AS number, without AS prefix: " peer_as
+
+port="2${peer_as:6}"
 ports_allocated=$(sed -n 's/^ListenPort\s*=\s*\(.*\)/\1/p' /etc/wireguard/*.conf | sort -n)
-port=$min_port
-while :; do
-  if ! grep -q "^${port}$" <<< "$ports_allocated"; then
-    break
-  fi
-  port=$(($port + 1))
-  if [[ $port -gt $max_port ]]; then
-    echo "all local ports allocated"
-    exit 1
-  fi
-done
+if ! grep -q "^${port}$" <<< "$ports_allocated"; then
+  echo "port $port already in use"
+  exit 1
+fi
 
 local_privkey=$(wg genkey)
 local_pubkey=$(wg pubkey <<< "$local_privkey")
+local_link="fe80::${local_as:6}"
 
 echo "# Local"
+echo "AS number: $local_as"
+echo "WireGuard private key: $local_privkey"
 echo "WireGuard public key: $local_pubkey"
-echo "Endpoint: dn42.stalkr.net:$port"
-echo "Link local: $local_link"
+echo "Endpoint: ${local_endpoint}:$port"
+echo "Link-local address: $local_link"
 echo
 
 echo "# Peer"
-read -p "AS number, without AS prefix: " peer_as
-read -p "Link local: " peer_link
-read -p "WireGuard pubkey: " peer_pubkey
-read -p "WireGuard endpoint: " peer_endpoint
+echo "AS number: $peer_as"
+read -p "WireGuard public key: " peer_pubkey
+read -p "Endpoint: " peer_endpoint
+peer_link="fe80:${peer_as:6}"
+echo "Link-local address: ${peer_link}"
 echo
 
 config_wg="/etc/wireguard/as${peer_as}.conf"
@@ -65,7 +61,6 @@ protocol bgp as${peer_as} from dnpeers {
     enable extended messages on;
     neighbor ${peer_link} as ${peer_as};
     interface "as${peer_as}";
-
     ipv4 {
         extended next hop on;
     };
